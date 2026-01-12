@@ -1058,16 +1058,23 @@ export const useRecentCompletionsWithUsers = (limit = 10) => {
       // Get unique user IDs
       const userIds = [...new Set((completions || []).map(c => c.user_id).filter((id): id is string => Boolean(id)))];
 
-      // Fetch users
+      // Fetch ALL users (since user_id might be zo_user_id, not id)
       const { data: users } = await supabase
         .from('users')
-        .select('id, name, username, city')
-        .in('id', userIds.length > 0 ? userIds : ['__none__']);
+        .select('id, zo_user_id, name, username, city');
 
+      // Create lookup maps by BOTH id AND zo_user_id for flexibility
       const userLookup: Record<string, { name: string; username: string; city: string }> = {};
       (users || []).forEach(u => {
-        const uId = String(u.id);
-        userLookup[uId] = { name: u.name || u.username || 'Anonymous', username: u.username || '', city: u.city || 'Unknown' };
+        const userData = { 
+          name: u.name || u.username || 'Anonymous', 
+          username: u.username || '', 
+          city: u.city || 'Unknown' 
+        };
+        // Map by Supabase ID
+        if (u.id) userLookup[String(u.id)] = userData;
+        // Also map by Zo platform user ID
+        if (u.zo_user_id) userLookup[String(u.zo_user_id)] = userData;
       });
 
       // Fetch quests for title lookup - look up by both id and slug
@@ -1251,16 +1258,18 @@ export const useCitizenStats = (limit = 100) => {
       // Get user IDs for lookup
       const userIds = [...new Set((leaderboard || []).map(l => l.user_id).filter((id): id is string => Boolean(id)))];
 
-      // Fetch user details
+      // Fetch ALL user details (since user_id might be zo_user_id, not id)
       const { data: users } = await supabase
         .from('users')
-        .select('id, name, username, city, last_seen')
-        .in('id', userIds.length > 0 ? userIds : ['__none__']);
+        .select('id, zo_user_id, name, username, city, last_seen');
 
+      // Create lookup maps by BOTH id AND zo_user_id for flexibility
       const userLookup: Record<string, any> = {};
       (users || []).forEach(u => {
-        const uId = String(u.id);
-        userLookup[uId] = u;
+        // Map by Supabase ID
+        if (u.id) userLookup[String(u.id)] = u;
+        // Also map by Zo platform user ID
+        if (u.zo_user_id) userLookup[String(u.zo_user_id)] = u;
       });
 
       // Count active today (users with last_seen within 24 hours)
