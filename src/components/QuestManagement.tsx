@@ -1164,10 +1164,9 @@ function RecentActivityRow({ user, quest, score, tokens, location, time }: Recen
         <div className="flex-1">
           <div className="text-sm mb-1">{user} completed <span className="text-[#9ae600]">{quest}</span></div>
           <div className="text-xs text-[#9f9fa9] flex items-center gap-3">
-            {score !== null && <span>Score: {score}</span>}
             <span className="flex items-center gap-1">
-              <Coins className="w-3 h-3" />
-              {tokens} tokens
+              <Trophy className="w-3 h-3 text-[#f0b100]" />
+              Score: {tokens}
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="w-3 h-3" />
