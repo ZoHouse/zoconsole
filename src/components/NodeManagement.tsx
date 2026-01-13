@@ -16,6 +16,46 @@ const NODE_TYPES = [
 
 const NODE_STATUSES = ['active', 'developing', 'planning'] as const;
 
+// Available node features
+const AVAILABLE_FEATURES = [
+  'Co-living',
+  'Co-working',
+  'Cafe',
+  'Restaurant',
+  'Bar',
+  'Event Space',
+  'Meeting Rooms',
+  'Private Rooms',
+  'Dorms',
+  'Kitchen',
+  'Laundry',
+  'Gym',
+  'Pool',
+  'Rooftop',
+  'Garden',
+  'Parking',
+  'WiFi',
+  'Pet Friendly',
+  'Workspace',
+  'Recording Studio',
+  'Podcast Room',
+  'Gaming Zone',
+  'Library',
+  'Meditation Room',
+  'Yoga Space',
+  'Art Studio',
+  'Music Room',
+  'Workshop Space',
+  'Terrace',
+  'Balcony',
+  'AC',
+  '24/7 Access',
+  'Security',
+  'Housekeeping',
+  'Breakfast Included',
+  'Airport Shuttle',
+] as const;
+
 export function NodeManagement({ selectedProperty, onPropertyChange }: NodeManagementProps) {
   const [activeView, setActiveView] = useState<'overview' | 'nodes' | 'analytics'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1714,7 +1754,52 @@ function NodeModal({ node, onClose }: NodeModalProps) {
           {/* Features */}
           <div>
             <label className="block text-xs text-[#9f9fa9] mb-1.5">Features</label>
-            <div className="flex gap-2 mb-2">
+            
+            {/* Selected Features */}
+            {(formData.features || []).length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {(formData.features || []).map((feature) => (
+                  <span 
+                    key={feature}
+                    className="px-2 py-1 bg-[#9ae600]/20 border border-[#9ae600]/30 text-[#9ae600] rounded text-xs flex items-center gap-1.5"
+                  >
+                    {feature}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFeature(feature)}
+                      className="hover:text-white"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Available Features Grid */}
+            <div className="mb-3">
+              <div className="text-xs text-[#71717b] mb-2">Click to add:</div>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#18181b] border border-[#27272a] rounded">
+                {AVAILABLE_FEATURES.filter(f => !(formData.features || []).includes(f)).map((feature) => (
+                  <button
+                    key={feature}
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        features: [...(prev.features || []), feature],
+                      }));
+                    }}
+                    className="px-2 py-1 bg-[#27272a] hover:bg-[#9ae600]/20 hover:border-[#9ae600]/30 border border-[#3a3a3a] rounded text-xs text-[#9f9fa9] hover:text-[#9ae600] transition-colors"
+                  >
+                    + {feature}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Feature Input */}
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={featureInput}
@@ -1725,33 +1810,17 @@ function NodeModal({ node, onClose }: NodeModalProps) {
                     handleAddFeature();
                   }
                 }}
-                placeholder="Add a feature (e.g. coworking, cafe)"
+                placeholder="Or type a custom feature..."
                 className="flex-1 px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
               />
               <button
                 type="button"
                 onClick={handleAddFeature}
-                className="px-4 py-2 bg-[#27272a] hover:bg-[#3f3f46] rounded text-sm transition-colors"
+                disabled={!featureInput.trim()}
+                className="px-4 py-2 bg-[#27272a] hover:bg-[#3f3f46] rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add
               </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(formData.features || []).map((feature) => (
-                <span 
-                  key={feature}
-                  className="px-2 py-1 bg-[#18181b] border border-[#27272a] rounded text-xs flex items-center gap-1.5"
-                >
-                  {feature}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFeature(feature)}
-                    className="text-[#9f9fa9] hover:text-white"
-                  >
-                    <XIcon className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
             </div>
           </div>
 

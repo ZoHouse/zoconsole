@@ -145,3 +145,69 @@ export const getUserMobiles = async () => {
   const response = await zoServer.get('/api/v1/auth/user/mobiles/');
   return response.data;
 };
+
+// ===========================================
+// FOUNDER TOKEN APIs (Admin - CAS)
+// ===========================================
+
+export const getFounderTokensStats = async () => {
+  const response = await zoServer.get('/api/v1/cas/founder-tokens/stats/');
+  return response.data;
+};
+
+export const getFounderTokensOwners = async (params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  ordering?: string;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  if (params?.offset) searchParams.set('offset', String(params.offset));
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.ordering) searchParams.set('ordering', params.ordering);
+  
+  const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
+  const response = await zoServer.get(`/api/v1/cas/founder-tokens/owners/${search}`);
+  return response.data;
+};
+
+export const getFounderTokensByAddress = async (address: string) => {
+  const response = await zoServer.get(`/api/v1/cas/founder-tokens/${address}/`);
+  return response.data;
+};
+
+export const getProfileById = async (pid: string) => {
+  const response = await zoServer.get(`/api/v1/cas/profiles/${pid}/`);
+  return response.data;
+};
+
+// ===========================================
+// USERS APIs (Admin - CAS)
+// ===========================================
+
+export const getUsers = async (params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  ordering?: string;
+  created_at__gte?: string;
+  created_at__lte?: string;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  if (params?.offset) searchParams.set('offset', String(params.offset));
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.ordering) searchParams.set('ordering', params.ordering);
+  if (params?.created_at__gte) searchParams.set('created_at__gte', params.created_at__gte);
+  if (params?.created_at__lte) searchParams.set('created_at__lte', params.created_at__lte);
+  
+  const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
+  const response = await zoServer.get(`/api/v1/cas/users/${search}`);
+  return response.data;
+};
+
+export const getUserById = async (userId: string) => {
+  const response = await zoServer.get(`/api/v1/cas/users/${userId}/`);
+  return response.data;
+};

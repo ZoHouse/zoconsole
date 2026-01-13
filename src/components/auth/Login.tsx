@@ -200,7 +200,7 @@ export function Login() {
       {/* Background gradient effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#9ae600]/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#06b6d4]/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#9ae600]/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative w-full max-w-md">
@@ -287,8 +287,8 @@ export function Login() {
           ) : (
             // OTP Verification Step
             <div>
-              <div className="flex items-center justify-center w-16 h-16 bg-[#06b6d4]/10 border border-[#06b6d4]/30 rounded-2xl mb-6 mx-auto">
-                <Lock className="w-8 h-8 text-[#06b6d4]" />
+              <div className="flex items-center justify-center w-16 h-16 bg-[#9ae600]/10 border border-[#9ae600]/30 rounded-2xl mb-6 mx-auto">
+                <Lock className="w-8 h-8 text-[#9ae600]" />
               </div>
               
               <h2 className="text-2xl font-semibold text-center mb-2">Enter Verification Code</h2>
@@ -311,7 +311,7 @@ export function Login() {
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                         onPaste={index === 0 ? handleOtpPaste : undefined}
-                        className="w-12 h-14 sm:w-14 sm:h-16 bg-[#18181b] border border-[#27272a] rounded-xl text-white text-center text-xl sm:text-2xl font-semibold focus:outline-none focus:border-[#06b6d4] transition-all"
+                        className="w-12 h-14 sm:w-14 sm:h-16 bg-[#18181b] border border-[#27272a] rounded-xl text-white text-center text-xl sm:text-2xl font-semibold focus:outline-none focus:border-[#9ae600] transition-all"
                         maxLength={1}
                         disabled={isLoading}
                       />
@@ -330,13 +330,13 @@ export function Login() {
                 <div className="text-center">
                   {resendTimer > 0 ? (
                     <p className="text-sm text-[#9f9fa9]">
-                      Resend code in <span className="text-[#06b6d4] font-medium">{resendTimer}s</span>
+                      Resend code in <span className="text-[#9ae600] font-medium">{resendTimer}s</span>
                     </p>
                   ) : (
                     <button
                       onClick={handleResendOtp}
                       disabled={isLoading}
-                      className="text-sm text-[#06b6d4] hover:text-[#0891b2] font-medium transition-colors disabled:opacity-50"
+                      className="text-sm text-[#9ae600] hover:text-[#8bd500] font-medium transition-colors disabled:opacity-50"
                     >
                       Resend Code
                     </button>
@@ -347,11 +347,11 @@ export function Login() {
                 <button
                   onClick={() => handleOtpSubmit()}
                   disabled={isLoading || otp.some(digit => !digit)}
-                  className="w-full py-3.5 bg-[#06b6d4] text-white rounded-xl font-semibold hover:bg-[#0891b2] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
+                  className="w-full py-3.5 bg-[#9ae600] text-black rounded-xl font-semibold hover:bg-[#8bd500] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
                       <span>Verifying...</span>
                     </div>
                   ) : (

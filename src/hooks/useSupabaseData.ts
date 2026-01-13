@@ -1058,23 +1058,69 @@ export const useRecentCompletionsWithUsers = (limit = 10) => {
       // Get unique user IDs
       const userIds = [...new Set((completions || []).map(c => c.user_id).filter((id): id is string => Boolean(id)))];
 
-      // Fetch ALL users (since user_id might be zo_user_id, not id)
+      // Fetch ALL users with all location fields
       const { data: users } = await supabase
         .from('users')
-        .select('id, zo_user_id, name, username, city');
+        .select('id, zo_user_id, name, username, city, wallet_address, zo_home_location');
+
+      // Also fetch leaderboard for username fallback
+      const { data: leaderboardEntries } = await supabase
+        .from('leaderboards')
+        .select('user_id, username, wallet');
+
+      // Helper to extract city from zo_home_location jsonb
+      const extractLocation = (user: any): string => {
+        // Try direct city field first
+        if (user.city) return user.city;
+        
+        // Try zo_home_location jsonb
+        if (user.zo_home_location) {
+          const loc = user.zo_home_location;
+          // Could be { city: "...", country: "..." } or { name: "..." } or similar
+          if (typeof loc === 'object') {
+            if (loc.city) return loc.city;
+            if (loc.name) return loc.name;
+            if (loc.locality) return loc.locality;
+            if (loc.region) return loc.region;
+            // Try to get any string value
+            const values = Object.values(loc).filter(v => typeof v === 'string' && v.length > 0);
+            if (values.length > 0) return values[0] as string;
+          }
+          if (typeof loc === 'string') return loc;
+        }
+        
+        return 'Unknown';
+      };
 
       // Create lookup maps by BOTH id AND zo_user_id for flexibility
       const userLookup: Record<string, { name: string; username: string; city: string }> = {};
+      
+      // First, populate from users table
       (users || []).forEach(u => {
         const userData = { 
-          name: u.name || u.username || 'Anonymous', 
+          name: u.name || u.username || '', 
           username: u.username || '', 
-          city: u.city || 'Unknown' 
+          city: extractLocation(u)
         };
         // Map by Supabase ID
         if (u.id) userLookup[String(u.id)] = userData;
         // Also map by Zo platform user ID
         if (u.zo_user_id) userLookup[String(u.zo_user_id)] = userData;
+      });
+
+      // Then, fill in missing usernames from leaderboard
+      (leaderboardEntries || []).forEach(l => {
+        const id = String(l.user_id || '');
+        if (id && !userLookup[id]?.name && l.username) {
+          userLookup[id] = { 
+            name: l.username, 
+            username: l.username, 
+            city: 'Unknown' 
+          };
+        } else if (id && userLookup[id] && !userLookup[id].name && l.username) {
+          userLookup[id].name = l.username;
+          userLookup[id].username = l.username;
+        }
       });
 
       // Fetch quests for title lookup - look up by both id and slug
@@ -1096,11 +1142,46 @@ export const useRecentCompletionsWithUsers = (limit = 10) => {
         }
       });
 
+      // Also create wallet-based lookup
+      const walletLookup: Record<string, { name: string; city: string }> = {};
+      (users || []).forEach(u => {
+        if (u.wallet_address) {
+          walletLookup[u.wallet_address.toLowerCase()] = {
+            name: u.name || u.username || '',
+            city: extractLocation(u)
+          };
+        }
+      });
+      (leaderboardEntries || []).forEach(l => {
+        if (l.wallet && l.username && !walletLookup[l.wallet.toLowerCase()]) {
+          walletLookup[l.wallet.toLowerCase()] = {
+            name: l.username,
+            city: 'Unknown'
+          };
+        }
+      });
+
       // Map completions to include user and quest info
       return (completions || []).map(c => {
         const userId = String(c.user_id || '');
         const questId = String(c.quest_id || '');
-        const user = userLookup[userId] || { name: 'Anonymous', username: '', city: 'Unknown' };
+        const walletAddr = c.wallet_address?.toLowerCase() || '';
+        
+        // Try multiple lookups: user_id -> wallet -> fallback
+        let user = userLookup[userId];
+        if ((!user || !user.name) && walletAddr) {
+          user = walletLookup[walletAddr] || user;
+        }
+        if (!user) {
+          user = { name: 'Anonymous', username: '', city: 'Unknown' };
+        }
+        
+        // Final name: prefer user.name, fallback to truncated wallet
+        let displayName = user.name || 'Anonymous';
+        if (displayName === 'Anonymous' && walletAddr) {
+          displayName = `${walletAddr.slice(0, 6)}...${walletAddr.slice(-4)}`;
+        }
+        
         // Try lookup by ID first, then by slug, then use the raw quest_id as title
         const quest = questLookupById[questId] || questLookupBySlug[questId] || { title: questId || 'Unknown Quest', slug: questId };
         const completedAt = c.completed_at ? new Date(c.completed_at) : new Date();
@@ -1113,15 +1194,47 @@ export const useRecentCompletionsWithUsers = (limit = 10) => {
         else if (diffMins < 1440) timeAgo = `${Math.floor(diffMins / 60)} hours ago`;
         else timeAgo = `${Math.floor(diffMins / 1440)} days ago`;
 
+        // Extract location from multiple sources
+        let location = 'Unknown';
+        
+        // 1. Try direct location field from completion
+        if (c.location && c.location !== 'Unknown' && c.location.trim() !== '') {
+          location = c.location;
+        }
+        // 2. Try metadata jsonb from completion
+        else if (c.metadata) {
+          const meta = typeof c.metadata === 'object' ? c.metadata : {};
+          if (meta.location) location = meta.location;
+          else if (meta.city) location = meta.city;
+          else if (meta.place) location = meta.place;
+          else if (meta.region) location = meta.region;
+        }
+        // 3. Try user's city from lookup
+        if (location === 'Unknown' && user.city && user.city !== 'Unknown') {
+          location = user.city;
+        }
+        
+        // Debug: Log when location is still unknown
+        if (location === 'Unknown') {
+          console.log('Location unknown for completion:', {
+            completion_id: c.id,
+            user_id: c.user_id,
+            completion_location: c.location,
+            completion_metadata: c.metadata,
+            user_city: user.city,
+            wallet: c.wallet_address
+          });
+        }
+        
         return {
           id: c.id,
           userId: c.user_id,
-          userName: user.name,
+          userName: displayName,
           questTitle: quest.title,
           questSlug: quest.slug,
           score: c.score,
           tokens: Number(c.amount) || 0,
-          location: c.location || user.city,
+          location,
           timeAgo,
           completedAt: c.completed_at,
         };

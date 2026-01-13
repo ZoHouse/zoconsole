@@ -17,6 +17,8 @@ import {
   Bot,
   Calendar,
   Wifi,
+  Crown,
+  UserCircle,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -34,7 +36,9 @@ interface SidebarProps {
     | "city-management"
     | "agent-management"
     | "event-management"
-    | "iot-hub";
+    | "iot-hub"
+    | "founders"
+    | "users";
   onTabChange: (
     tab:
       | "dashboard"
@@ -51,6 +55,8 @@ interface SidebarProps {
       | "agent-management"
       | "event-management"
       | "iot-hub"
+      | "founders"
+      | "users"
   ) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -198,6 +204,28 @@ export function Sidebar({
               >
                 <Wifi className="w-5 h-5 flex-shrink-0" />
                 <span>IoT Hub</span>
+              </button>
+              <button
+                onClick={() => onTabChange("founders")}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors ${
+                  activeTab === "founders"
+                    ? "bg-[#9ae600] text-black"
+                    : "text-white hover:bg-[#27272a]"
+                }`}
+              >
+                <Crown className="w-5 h-5 flex-shrink-0" />
+                <span>Founders</span>
+              </button>
+              <button
+                onClick={() => onTabChange("users")}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors ${
+                  activeTab === "users"
+                    ? "bg-[#9ae600] text-black"
+                    : "text-white hover:bg-[#27272a]"
+                }`}
+              >
+                <UserCircle className="w-5 h-5 flex-shrink-0" />
+                <span>Users</span>
               </button>
             </div>
           </div>

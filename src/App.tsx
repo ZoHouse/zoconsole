@@ -14,6 +14,8 @@ import { CityManagement } from "./components/CityManagement";
 import { AgentManagement } from "./components/AgentManagement";
 import { EventManagement } from "./components/EventManagement";
 import { IoTHub } from "./components/IoTHub";
+import { FoundersManagement } from "./components/FoundersManagement";
+import { UsersManagement } from "./components/UsersManagement";
 import { useAuth } from "./contexts/AuthContext";
 import { Login } from "./components/auth/Login";
 
@@ -34,6 +36,8 @@ export default function App() {
     | "agent-management"
     | "event-management"
     | "iot-hub"
+    | "founders"
+    | "users"
   >("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState("blr-zo");
@@ -146,6 +150,18 @@ export default function App() {
         )}
         {activeTab === "iot-hub" && (
           <IoTHub
+            selectedProperty={selectedProperty}
+            onPropertyChange={setSelectedProperty}
+          />
+        )}
+        {activeTab === "founders" && (
+          <FoundersManagement
+            selectedProperty={selectedProperty}
+            onPropertyChange={setSelectedProperty}
+          />
+        )}
+        {activeTab === "users" && (
+          <UsersManagement
             selectedProperty={selectedProperty}
             onPropertyChange={setSelectedProperty}
           />

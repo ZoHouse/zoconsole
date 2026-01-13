@@ -28,3 +28,10 @@ Reference/
 .vscode/
 .idea/
 .cursor/
+
+# Sync data files
+zo-users-data.json
+zo-users-*.json
+zo-founders-*.csv
+public/zo-users-*.json
+*.zip

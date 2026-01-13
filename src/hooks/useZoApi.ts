@@ -236,3 +236,83 @@ export const useMobileLogin = () => {
     resetVerify: verifyOtpMutation.reset,
   };
 };
+
+// ===========================================
+// FOUNDER TOKEN ADMIN HOOKS
+// ===========================================
+
+export const useFounderTokensStats = () => {
+  const { isLoggedIn } = useAuth();
+
+  return useQuery({
+    queryKey: ['cas', 'founder-tokens', 'stats'],
+    queryFn: api.getFounderTokensStats,
+    enabled: isLoggedIn === true,
+  });
+};
+
+export const useFounderTokensOwners = (params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  ordering?: string;
+}) => {
+  const { isLoggedIn } = useAuth();
+
+  return useQuery({
+    queryKey: ['cas', 'founder-tokens', 'owners', params],
+    queryFn: () => api.getFounderTokensOwners(params),
+    enabled: isLoggedIn === true,
+  });
+};
+
+export const useFounderTokensByAddress = (address: string | undefined) => {
+  const { isLoggedIn } = useAuth();
+
+  return useQuery({
+    queryKey: ['webthree', 'founder', address, 'tokens'],
+    queryFn: () => api.getFounderTokensByAddress(address!),
+    enabled: isLoggedIn === true && !!address,
+  });
+};
+
+export const useProfileById = (pid: string | undefined) => {
+  const { isLoggedIn } = useAuth();
+
+  return useQuery({
+    queryKey: ['profile', pid],
+    queryFn: () => api.getProfileById(pid!),
+    enabled: isLoggedIn === true && !!pid,
+  });
+};
+
+// ===========================================
+// USERS ADMIN HOOKS
+// ===========================================
+
+export const useUsers = (params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  ordering?: string;
+  created_at__gte?: string;
+  created_at__lte?: string;
+}) => {
+  const { isLoggedIn } = useAuth();
+
+  return useQuery({
+    queryKey: ['auth', 'users', params],
+    queryFn: () => api.getUsers(params),
+    enabled: isLoggedIn === true,
+  });
+};
+
+export const useUserById = (userId: string | undefined) => {
+  const { isLoggedIn } = useAuth();
+
+  return useQuery({
+    queryKey: ['auth', 'users', userId],
+    queryFn: () => api.getUserById(userId!),
+    enabled: isLoggedIn === true && !!userId,
+  });
+};
