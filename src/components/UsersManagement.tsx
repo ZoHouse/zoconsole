@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Users, MapPin, Loader2 } from 'lucide-react';
+import { Search, Users, MapPin, Loader2, UserCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserInfoSidebar } from './sidebars';
 
