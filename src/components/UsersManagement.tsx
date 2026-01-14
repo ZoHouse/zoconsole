@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Users, MapPin, Loader2, UserCircle } from 'lucide-react';
+import { Search, Users, MapPin, Loader2, UserCircle, Check, RefreshCw, ChevronDown, Download } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserInfoSidebar } from './sidebars';
 
@@ -117,7 +117,6 @@ export function UsersManagement({ selectedProperty, onPropertyChange }: UsersMan
       let query = supabase
         .from('users')
         .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
         .range(from, to);
 
       if (searchQuery) {
