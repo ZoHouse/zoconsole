@@ -14,11 +14,23 @@ export function Crew({ selectedProperty, onPropertyChange, embedded = false }: C
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
 
+  /* Use yesterday's date for daily reports */
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const formattedDate = yesterday.toISOString().split('T')[0]; // Using ISO for API (YYYY-MM-DD) - simplifiction, assuming correlation with backend
+
+  // Better handling for local timezone date
+  const localYesterday = new Date();
+  localYesterday.setDate(localYesterday.getDate() - 1);
+  const offset = localYesterday.getTimezoneOffset();
+  const localDate = new Date(localYesterday.getTime() - (offset * 60 * 1000));
+  const dateParam = localDate.toISOString().split('T')[0];
+
   useEffect(() => {
     fetchDashboardStats(selectedProperty).then(setStats).catch(console.error);
-    fetchDailyReports(undefined, selectedProperty).then(setReports).catch(console.error);
+    fetchDailyReports(dateParam, selectedProperty).then(setReports).catch(console.error);
     fetchStaffList(selectedProperty).then(setStaffList).catch(console.error);
-  }, [selectedProperty]);
+  }, [selectedProperty, dateParam]);
 
   return (
     <>
@@ -27,7 +39,7 @@ export function Crew({ selectedProperty, onPropertyChange, embedded = false }: C
         <div className="max-w-[1400px] space-y-6">
           <StaffOverview stats={stats} />
           <PerformanceReports stats={stats} />
-          <DailyReports reports={reports} />
+          <DailyReports reports={reports} displayDate={localYesterday} />
           <StaffDirectory searchQuery={searchQuery} staffList={staffList} />
         </div>
       </main>
@@ -166,17 +178,15 @@ function PerformanceCard({ title, value, subtitle, color }: PerformanceCardProps
   );
 }
 
-function DailyReports({ reports = [] }: { reports?: DailyReport[] }) {
-  if (!reports.length) return null;
-
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+function DailyReports({ reports = [], displayDate }: { reports?: DailyReport[], displayDate: Date }) {
+  const dateStr = displayDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
     <div className="bg-[#09090b] border border-[#27272a] rounded-lg">
       <div className="p-4 border-b border-[#27272a] flex items-center justify-between">
         <div>
           <h3 className="text-lg">Daily Performance Reports</h3>
-          <p className="text-sm text-[#9f9fa9] mt-1">{today}</p>
+          <p className="text-sm text-[#9f9fa9] mt-1">{dateStr}</p>
         </div>
         <button className="text-sm text-[#9ae600] hover:underline flex items-center gap-2">
           <FileText className="w-4 h-4" />
@@ -184,73 +194,84 @@ function DailyReports({ reports = [] }: { reports?: DailyReport[] }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-4">
-        {reports.map((report) => (
-          <div key={report.staff_id} className="bg-[#1a1a1a] border border-[#27272a] rounded-lg p-4 hover:border-[#9ae600] transition-colors">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#27272a]">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center shrink-0">
-                <span className="text-xs">{report.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}</span>
-              </div>
-              <div className="flex-1">
-                <div className="text-sm">{report.name}</div>
-                <div className="text-xs text-[#9f9fa9]">{report.role}</div>
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-2 mb-4 pb-4 border-b border-[#27272a]">
-              <div>
-                <div className="text-xs text-[#9f9fa9]">Zones</div>
-                <div className="text-lg text-[#9ae600]">{report.zones_completed}</div>
-              </div>
-              <div>
-                <div className="text-xs text-[#9f9fa9]">Tasks</div>
-                <div className="text-lg text-[#06b6d4]">{report.tasks_completed}</div>
-              </div>
-              <div>
-                <div className="text-xs text-[#9f9fa9]">Points</div>
-                <div className="text-lg text-[#f0b100]">{report.points}</div>
-              </div>
-            </div>
-
-            {/* Work Time */}
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#9f9fa9] flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Work Time
-                </span>
-                <span className="text-white">{report.work_time}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#9f9fa9]">Breaks</span>
-                <span className="text-white">{report.breaks_time}</span>
-              </div>
-            </div>
-
-            {/* Zones Detail */}
-            <div className="space-y-2">
-              <div className="text-xs text-[#9f9fa9] mb-2">Zones Cleaned:</div>
-              {report.detailed_zones.map((zone, idx) => (
-                <div key={idx} className="text-xs bg-[#09090b] p-2 rounded">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-white">• {zone.name}</span>
-                    <span className="text-[#9ae600]">{zone.points}</span>
-                  </div>
-                  <div className="text-[#71717b] text-[10px]">{zone.time}</div>
+      {!reports || reports.length === 0 ? (
+        <div className="p-8 text-center text-[#9f9fa9] text-sm">
+          No daily reports available for this date.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 p-4">
+          {reports.map((report) => (
+            <div key={report.id} className="bg-[#1a1a1a] border border-[#27272a] rounded-lg p-4 hover:border-[#9ae600] transition-colors">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#27272a]">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center shrink-0">
+                  <span className="text-xs">{report.staff_name ? report.staff_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : (report.staff_id || '??')}</span>
                 </div>
-              ))}
-            </div>
+                <div className="flex-1">
+                  <div className="text-sm">{report.staff_name || report.staff_id}</div>
+                  <div className="text-xs text-[#9f9fa9]">{report.role || '-'}</div>
+                </div>
+              </div>
 
-            {/* Action */}
-            <button className="w-full mt-4 px-3 py-2 bg-[#09090b] border border-[#27272a] rounded text-xs hover:bg-[#27272a] transition-colors flex items-center justify-center gap-2">
-              <FileText className="w-3 h-3" />
-              View Full Report
-            </button>
-          </div>
-        ))}
-      </div>
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-2 mb-4 pb-4 border-b border-[#27272a]">
+                <div>
+                  <div className="text-xs text-[#9f9fa9]">Tasks</div>
+                  <div className="text-lg text-[#06b6d4]">{report.tasks_completed}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-[#9f9fa9]">Efficiency</div>
+                  <div className="text-lg text-[#9ae600]">{report.efficiency || 0}%</div>
+                </div>
+                <div>
+                  <div className="text-xs text-[#9f9fa9]">Points</div>
+                  <div className="text-lg text-[#f0b100]">{report.total_points}</div>
+                </div>
+              </div>
+
+              {/* Work Time & Status */}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#9f9fa9] flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Shift
+                  </span>
+                  <span className="text-white">
+                    {report.shift_start_time ? new Date(report.shift_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    {report.shift_end_time ? ` - ${new Date(report.shift_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#9f9fa9]">Status</span>
+                  <span className="text-white capitalize">{report.attendance_status}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#9f9fa9]">Avg Task Time</span>
+                  <span className="text-white">{report.average_time || '-'}</span>
+                </div>
+              </div>
+
+              {/* Additional Stats */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#9f9fa9]">Issues Flagged</span>
+                  <span className="text-red-400">{report.issues_flagged || 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#9f9fa9]">Rating</span>
+                  <span className="text-yellow-400">{report.customer_rating || 0}/5</span>
+                </div>
+              </div>
+
+              {/* Action */}
+              <button className="w-full mt-4 px-3 py-2 bg-[#09090b] border border-[#27272a] rounded text-xs hover:bg-[#27272a] transition-colors flex items-center justify-center gap-2">
+                <FileText className="w-3 h-3" />
+                View Full Report
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

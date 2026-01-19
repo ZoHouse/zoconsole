@@ -1,5 +1,6 @@
 import { Plus, Search, Edit, Trash2, Send, Clock, Camera, ChevronDown, CheckCircle, AlertCircle, Download } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchTasks, type Task } from '../services/dashboard';
 
 interface TaskSchedulerProps {
   selectedProperty: string;
@@ -10,6 +11,38 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
   const [activeTab, setActiveTab] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedZone, setSelectedZone] = useState('all');
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [activeTasksCount, setActiveTasksCount] = useState(0);
+  const [completedTasksCount, setCompletedTasksCount] = useState(0);
+  const [pendingTasksCount, setPendingTasksCount] = useState(0);
+
+  useEffect(() => {
+    fetchTasks(selectedProperty)
+      .then(fetchedTasks => {
+        setTasks(fetchedTasks);
+        // Calculate basic stats from fetched tasks
+        setActiveTasksCount(fetchedTasks.filter(t => t.status === 'scheduled' || t.status === 'in_progress').length);
+        setCompletedTasksCount(fetchedTasks.filter(t => t.status === 'completed').length);
+        setPendingTasksCount(fetchedTasks.filter(t => t.status === 'pending' || t.status === 'scheduled').length);
+      })
+      .catch(console.error);
+  }, [selectedProperty]);
+
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = (task.task_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.task_description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.zone_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesZone = selectedZone === 'all' || task.zone_id === selectedZone;
+    // Priority logic might need adjustment if priority is not standard.
+    // Assuming priority is number if present, otherwise default to something or ignore.
+    const priority = task.priority || 999;
+
+    const matchesTab = activeTab === 'all' ||
+      (activeTab === 'high' && priority <= 2) ||
+      (activeTab === 'medium' && priority > 2 && priority <= 5) ||
+      (activeTab === 'low' && priority > 5);
+    return matchesSearch && matchesZone && matchesTab;
+  });
 
   return (
     <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -18,9 +51,9 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl">Daily Task Management</h2>
-            <p className="text-sm text-[#9f9fa9] mt-1">Manage predefined tasks for WhatsApp bot distribution</p>
+            <p className="text-sm text-[#9f9fa9] mt-1">Manage predefined tasks for distribution</p>
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border border-[#27272a] rounded text-sm hover:bg-[#27272a] transition-colors">
               <Download className="w-4 h-4" />
@@ -38,25 +71,25 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
           <StatCard
             icon={<CheckCircle className="w-5 h-5" />}
             label="Active Tasks"
-            value="26"
+            value={activeTasksCount.toString()}
             color="text-[#9ae600]"
           />
           <StatCard
             icon={<AlertCircle className="w-5 h-5" />}
             label="Active Crew"
-            value="12"
+            value="-"
             color="text-[#9ae600]"
           />
           <StatCard
             icon={<CheckCircle className="w-5 h-5" />}
             label="Tasks Completed"
-            value="18"
+            value={completedTasksCount.toString()}
             color="text-[#9ae600]"
           />
           <StatCard
             icon={<Clock className="w-5 h-5" />}
-            label="Tasks Pending (24h)"
-            value="6"
+            label="Tasks Pending"
+            value={pendingTasksCount.toString()}
             color="text-[#f0b100]"
           />
         </div>
@@ -66,46 +99,18 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-[#27272a]">
             {/* Tabs */}
             <div className="flex overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-4 sm:px-6 py-3 sm:py-4 text-sm whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === 'all'
+              {['all', 'high', 'medium', 'low'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab as any)}
+                  className={`px-4 sm:px-6 py-3 sm:py-4 text-sm whitespace-nowrap transition-colors border-b-2 ${activeTab === tab
                     ? 'border-[#9ae600] text-white'
                     : 'border-transparent text-[#9f9fa9] hover:text-white'
-                }`}
-              >
-                All Tasks
-              </button>
-              <button
-                onClick={() => setActiveTab('high')}
-                className={`px-4 sm:px-6 py-3 sm:py-4 text-sm whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === 'high'
-                    ? 'border-[#9ae600] text-white'
-                    : 'border-transparent text-[#9f9fa9] hover:text-white'
-                }`}
-              >
-                High Priority
-              </button>
-              <button
-                onClick={() => setActiveTab('medium')}
-                className={`px-4 sm:px-6 py-3 sm:py-4 text-sm whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === 'medium'
-                    ? 'border-[#9ae600] text-white'
-                    : 'border-transparent text-[#9f9fa9] hover:text-white'
-                }`}
-              >
-                Medium Priority
-              </button>
-              <button
-                onClick={() => setActiveTab('low')}
-                className={`px-4 sm:px-6 py-3 sm:py-4 text-sm whitespace-nowrap transition-colors border-b-2 ${
-                  activeTab === 'low'
-                    ? 'border-[#9ae600] text-white'
-                    : 'border-transparent text-[#9f9fa9] hover:text-white'
-                }`}
-              >
-                Low Priority
-              </button>
+                    }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)} {tab !== 'all' ? 'Priority' : 'Tasks'}
+                </button>
+              ))}
             </div>
 
             {/* Search and Filters */}
@@ -120,7 +125,7 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
                   className="w-full sm:w-64 bg-[#09090b] border border-[#27272a] rounded pl-10 pr-4 py-2 text-sm text-white placeholder-[#9f9fa9] focus:outline-none focus:border-[#9ae600]"
                 />
               </div>
-              
+
               <div className="relative">
                 <select
                   value={selectedZone}
@@ -142,7 +147,7 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
 
           {/* Tasks Table */}
           <div className="overflow-x-auto">
-            <TasksTable searchQuery={searchQuery} selectedZone={selectedZone} activeTab={activeTab} />
+            <TasksTable tasks={filteredTasks} />
           </div>
         </div>
       </div>
@@ -172,313 +177,10 @@ function StatCard({ icon, label, value, color }: StatCardProps) {
 }
 
 interface TasksTableProps {
-  searchQuery: string;
-  selectedZone: string;
-  activeTab: 'all' | 'high' | 'medium' | 'low';
+  tasks: Task[];
 }
 
-function TasksTable({ searchQuery, selectedZone, activeTab }: TasksTableProps) {
-  const tasks = [
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-1',
-      title: 'Workstation',
-      description: 'Clean and arrange the work chair, table, pen stand, table lamp, desk mat, water bottle, extension board, and',
-      priority: 1,
-      estimatedMinutes: 5,
-      requiresPhoto: true,
-      status: 'scheduled',
-      assignedTo: 'Maria Chen'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-2',
-      title: 'Workstation',
-      description: 'Clean and arrange the work chair, table, pen stand, table lamp, desk mat, water bottle, extension board, and',
-      priority: 2,
-      estimatedMinutes: 5,
-      requiresPhoto: true,
-      status: 'completed',
-      assignedTo: 'John Smith'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-3',
-      title: 'Meeting Pod',
-      description: 'Remove any clutter and clean the meeting pod',
-      priority: 3,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Sarah Johnson'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-4',
-      title: 'Sitting Area',
-      description: 'Reshape beanbags/cushions, Clean coffee table, Restock Supplies',
-      priority: 4,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Mike Davis'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-5',
-      title: 'Console table',
-      description: 'Clean and arrange console table',
-      priority: 5,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'completed',
-      assignedTo: 'Emma Wilson'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-6',
-      title: 'Garbage',
-      description: 'Collect garbage and replace new garbage bags',
-      priority: 3,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'David Lee'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-7',
-      title: 'Balcony',
-      description: 'Clean and arrange seating in balcony',
-      priority: 1,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Lisa Brown'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-8',
-      title: 'Dusting',
-      description: 'Dust the applewheels from ceiling',
-      priority: 6,
-      estimatedMinutes: 10,
-      requiresPhoto: true,
-      status: 'completed',
-      assignedTo: 'Tom Anderson'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-9',
-      title: 'Floor',
-      description: 'Dusting and Mop Floor after removing doormats',
-      priority: 7,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Amy Taylor'
-    },
-    {
-      zoneId: 'ZONE001',
-      zoneName: 'Degen Lounge',
-      areaPriority: 1,
-      taskId: '1.ZONE001-10',
-      title: 'Inspection',
-      description: 'Check all lights, plug sockets, projector, wifi modem is working',
-      priority: 8,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Chris Martin'
-    },
-    {
-      zoneId: 'ZONE002',
-      zoneName: 'Dining Area',
-      areaPriority: 2,
-      taskId: '2.ZONE002-1',
-      title: 'Dining table',
-      description: 'Clean Tables and Chairs, Restock Supplies',
-      priority: 1,
-      estimatedMinutes: 5,
-      requiresPhoto: true,
-      status: 'scheduled',
-      assignedTo: 'Maria Chen'
-    },
-    {
-      zoneId: 'ZONE002',
-      zoneName: 'Dining Area',
-      areaPriority: 2,
-      taskId: '2.ZONE002-2',
-      title: 'Dusting',
-      description: 'Dust the applewheels from ceiling',
-      priority: 6,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'completed',
-      assignedTo: 'John Smith'
-    },
-    {
-      zoneId: 'ZONE002',
-      zoneName: 'Dining Area',
-      areaPriority: 2,
-      taskId: '2.ZONE002-3',
-      title: 'Floor',
-      description: 'Dusting and Mop Floor after removing doormats',
-      priority: 7,
-      estimatedMinutes: 10,
-      requiresPhoto: true,
-      status: 'scheduled',
-      assignedTo: 'Sarah Johnson'
-    },
-    {
-      zoneId: 'ZONE002',
-      zoneName: 'Dining Area',
-      areaPriority: 2,
-      taskId: '2.ZONE002-4',
-      title: 'Inspection',
-      description: 'Check all lights, plug sockets, projector, wifi modem is working',
-      priority: 8,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Mike Davis'
-    },
-    {
-      zoneId: 'ZONE003',
-      zoneName: 'Warp Zone',
-      areaPriority: 3,
-      taskId: '3.ZONE003-1',
-      title: 'Workstation',
-      description: 'Clean and arrange the work chair, table, pen stand, table lamp, desk mat, water bottle, extension board, and',
-      priority: 1,
-      estimatedMinutes: 5,
-      requiresPhoto: true,
-      status: 'scheduled',
-      assignedTo: 'Emma Wilson'
-    },
-    {
-      zoneId: 'ZONE003',
-      zoneName: 'Warp Zone',
-      areaPriority: 3,
-      taskId: '3.ZONE003-2',
-      title: 'Workstation',
-      description: 'Clean and arrange the work chair, table, pen stand, table lamp, desk mat, water bottle, extension board, and',
-      priority: 1,
-      estimatedMinutes: 5,
-      requiresPhoto: true,
-      status: 'completed',
-      assignedTo: 'David Lee'
-    },
-    {
-      zoneId: 'ZONE003',
-      zoneName: 'Warp Zone',
-      areaPriority: 3,
-      taskId: '3.ZONE003-3',
-      title: 'Garbage',
-      description: 'Collect garbage and replace new garbage bags',
-      priority: 3,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Lisa Brown'
-    },
-    {
-      zoneId: 'ZONE003',
-      zoneName: 'Warp Zone',
-      areaPriority: 3,
-      taskId: '3.ZONE003-4',
-      title: 'Dusting',
-      description: 'Dust the applewheels from ceiling',
-      priority: 6,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'completed',
-      assignedTo: 'Tom Anderson'
-    },
-    {
-      zoneId: 'ZONE003',
-      zoneName: 'Warp Zone',
-      areaPriority: 3,
-      taskId: '3.ZONE003-5',
-      title: 'Floor',
-      description: 'Dusting and Mop Floor after removing doormats',
-      priority: 5,
-      estimatedMinutes: 10,
-      requiresPhoto: true,
-      status: 'scheduled',
-      assignedTo: 'Amy Taylor'
-    },
-    {
-      zoneId: 'ZONE003',
-      zoneName: 'Warp Zone',
-      areaPriority: 3,
-      taskId: '3.ZONE003-6',
-      title: 'Inspection',
-      description: 'Check all lights, plug sockets, projector, wifi modem is working',
-      priority: 6,
-      estimatedMinutes: 5,
-      requiresPhoto: false,
-      status: 'scheduled',
-      assignedTo: 'Chris Martin'
-    },
-    {
-      zoneId: 'ZONE004',
-      zoneName: 'Zo Studio',
-      areaPriority: 4,
-      taskId: '4.ZONE004-1',
-      title: 'Workstation',
-      description: 'Clean and arrange the work chair, table, pen stand, table lamp, desk mat, water bottle, extension board, and',
-      priority: 1,
-      estimatedMinutes: 5,
-      requiresPhoto: true,
-      status: 'scheduled',
-      assignedTo: 'Maria Chen'
-    },
-    {
-      zoneId: 'ZONE004',
-      zoneName: 'Zo Studio',
-      areaPriority: 4,
-      taskId: '4.ZONE004-2',
-      title: 'Workstation',
-      description: 'Clean and arrange the work chair, table, pen stand, table lamp, desk mat, water bottle, extension board, and',
-      priority: 1,
-      estimatedMinutes: 5,
-      requiresPhoto: true,
-      status: 'completed',
-      assignedTo: 'John Smith'
-    }
-  ];
-
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.zoneName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesZone = selectedZone === 'all' || task.zoneId === selectedZone;
-    const matchesTab = activeTab === 'all' || 
-                       (activeTab === 'high' && task.priority <= 2) ||
-                       (activeTab === 'medium' && task.priority > 2 && task.priority <= 5) ||
-                       (activeTab === 'low' && task.priority > 5);
-    return matchesSearch && matchesZone && matchesTab;
-  });
-
+function TasksTable({ tasks }: TasksTableProps) {
   return (
     <table className="w-full min-w-[1200px]">
       <thead className="bg-[#09090b] border-b border-[#27272a]">
@@ -497,32 +199,31 @@ function TasksTable({ searchQuery, selectedZone, activeTab }: TasksTableProps) {
         </tr>
       </thead>
       <tbody>
-        {filteredTasks.map((task, index) => (
+        {tasks.map((task, index) => (
           <tr key={index} className="border-b border-[#27272a] hover:bg-[#27272a]/30 transition-colors">
-            <td className="px-4 py-3 text-sm">{task.zoneId}</td>
-            <td className="px-4 py-3 text-sm">{task.zoneName}</td>
-            <td className="px-4 py-3 text-sm text-[#9f9fa9]">{task.taskId}</td>
-            <td className="px-4 py-3 text-sm">{task.title}</td>
-            <td className="px-4 py-3 text-sm text-[#9f9fa9] max-w-xs truncate">{task.description}</td>
+            <td className="px-4 py-3 text-sm">{task.zone_id || '-'}</td>
+            <td className="px-4 py-3 text-sm">{task.zone_name || '-'}</td>
+            <td className="px-4 py-3 text-sm text-[#9f9fa9]">{task.task_id}</td>
+            <td className="px-4 py-3 text-sm">{task.task_name}</td>
+            <td className="px-4 py-3 text-sm text-[#9f9fa9] max-w-xs truncate">{task.task_description}</td>
             <td className="px-4 py-3">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                task.priority <= 2
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${(task.priority || 999) <= 2
                   ? 'bg-[#fb2c36]/10 text-[#fb2c36]'
-                  : task.priority <= 5
-                  ? 'bg-[#f0b100]/10 text-[#f0b100]'
-                  : 'bg-[#9f9fa9]/10 text-[#9f9fa9]'
-              }`}>
-                {task.priority}
+                  : (task.priority || 999) <= 5
+                    ? 'bg-[#f0b100]/10 text-[#f0b100]'
+                    : 'bg-[#9f9fa9]/10 text-[#9f9fa9]'
+                }`}>
+                {task.priority || '-'}
               </span>
             </td>
             <td className="px-4 py-3 text-sm">
               <div className="flex items-center gap-1 text-[#9f9fa9]">
                 <Clock className="w-3.5 h-3.5" />
-                {task.estimatedMinutes}m
+                {task.estimated_time || '-'}
               </div>
             </td>
             <td className="px-4 py-3">
-              {task.requiresPhoto ? (
+              {task.photo_required === 'yes' ? (
                 <div className="flex items-center gap-1 text-[#9ae600]">
                   <Camera className="w-4 h-4" />
                   <span className="text-xs">Yes</span>
@@ -531,14 +232,13 @@ function TasksTable({ searchQuery, selectedZone, activeTab }: TasksTableProps) {
                 <span className="text-xs text-[#71717b]">No</span>
               )}
             </td>
-            <td className="px-4 py-3 text-sm">{task.assignedTo}</td>
+            <td className="px-4 py-3 text-sm">{task.assigned_to || '-'}</td>
             <td className="px-4 py-3">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                task.status === 'completed'
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${task.status === 'completed'
                   ? 'bg-[#9ae600]/10 text-[#9ae600]'
                   : 'bg-[#f0b100]/10 text-[#f0b100]'
-              }`}>
-                {task.status}
+                }`}>
+                {task.status || 'Pending'}
               </span>
             </td>
             <td className="px-4 py-3">

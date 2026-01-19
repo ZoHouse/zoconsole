@@ -25,18 +25,26 @@ export interface DetailedZone {
 
 export interface DailyReport {
     id: number;
-    staff_name: string;
-    role: string;
-    shift_start: string;
-    shift_end: string;
-    attendance_status: string;
-    tasks_completed: number;
-    average_time: string; // "XXm"
-    efficiency: number; // percentage
-    points_earned: number;
-    issues_flagged: number;
-    customer_rating: number; // 1-5
-    date: string;
+    staff_id: string; // From JSON
+    staff_name?: string; // Likely joined from staff table, might be missing in raw response
+    role?: string; // Likely joined, might be missing
+    shift_date: string; // From JSON
+    shift_start_time: string; // From JSON
+    shift_end_time?: string; // Inferring existence, or might need to use shift_start+minutes
+    attendance_status: string; // From JSON
+    zones_completed: number; // From JSON
+    tasks_completed: number; // From JSON
+    total_points: number; // From JSON
+    total_work_minutes: number; // From JSON
+    total_break_minutes: number; // From JSON
+    created_at: string; // From JSON
+    updated_at: string; // From JSON
+    property_id: string; // From JSON
+    // UI computed or optional fields
+    efficiency?: number;
+    average_time?: string;
+    issues_flagged?: number;
+    customer_rating?: number;
 }
 
 export interface StaffMember {
@@ -59,6 +67,25 @@ interface DailyReportsResponse {
 
 interface StaffResponse {
     staff: StaffMember[];
+}
+
+export interface Task {
+    task_id: string;
+    task_name: string;
+    task_description: string;
+    photo_required: string; // "yes" | "no"
+    estimated_time: string; // "30m"
+    category: string;
+    // Optional fields if they exist in some responses
+    zone_id?: string;
+    zone_name?: string;
+    priority?: number;
+    status?: string;
+    assigned_to?: string;
+}
+
+interface TasksResponse {
+    tasks: Task[];
 }
 
 interface SuccessResponse<T> {
@@ -101,30 +128,23 @@ export async function fetchDashboardStats(propertyId?: string): Promise<Dashboar
 }
 
 export async function fetchDailyReports(date?: string, propertyId?: string): Promise<DailyReport[]> {
-    const url = new URL(`${API_BASE_URL}/daily-performance`);
+    const params: any = {};
     if (date) {
-        url.searchParams.append('date', date);
+        params.shift_date = date; // Updated to match API expectation 'shift_date'
     }
     if (propertyId && propertyId !== 'all') {
-        url.searchParams.append('property_id', propertyId);
+        params.property_id = propertyId;
     }
 
-    const response = await fetch(url.toString(), {
-        headers: {
-            'accept': 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        // Return empty list if endpoint fails (e.g. 404 or 500)
-        console.warn(`Failed to fetch daily reports: ${response.statusText}`);
-        return [];
-    }
-
-    // Handle potential empty body or different format
     try {
-        const json = await response.json();
-        // Check if it's the SuccessResponse format or direct list
+        console.log('Fetching daily reports with params:', params);
+        const response = await zoServer.get('/daily-performance', { params });
+
+        // zoServer might return the data directly depending on interceptor configuration,
+        // but checking standard axios response format first.
+        const json = response.data;
+        console.log('Daily Reports API Raw Response:', json);
+
         if (json && json.success && Array.isArray(json.data)) {
             return json.data;
         } else if (Array.isArray(json)) {
@@ -133,36 +153,62 @@ export async function fetchDailyReports(date?: string, propertyId?: string): Pro
             return json.reports;
         }
         return [];
-    } catch (e) {
-        console.warn("Failed to parse daily reports", e);
+    } catch (error) {
+        console.warn("Failed to fetch daily reports", error);
         return [];
     }
 }
 
 export async function fetchStaffList(propertyId?: string): Promise<StaffMember[]> {
-    const url = new URL(`${API_BASE_URL}/staff`);
+    const params: any = {};
     if (propertyId && propertyId !== 'all') {
-        url.searchParams.append('property_id', propertyId);
+        params.property_id = propertyId;
     }
 
-    const response = await fetch(url.toString(), {
-        headers: {
-            'accept': 'application/json',
-        },
-    });
+    try {
+        const response = await zoServer.get('/staff', { params });
+        const json = response.data;
+        console.log('Staff API Raw Response:', json); // Debug logging
 
-    if (!response.ok) {
-        throw new Error(`Failed to fetch staff list: ${response.statusText}`);
+        // Handle SuccessResponse format
+        if (json.success && Array.isArray(json.data)) {
+            return json.data;
+        }
+        // Fallback for previous format just in case
+        if (json.staff) {
+            return json.staff;
+        }
+        return [];
+    } catch (error) {
+        console.error("Failed to fetch staff list", error);
+        throw error;
+    }
+}
+
+export async function fetchTasks(propertyId?: string, zoneId?: string): Promise<Task[]> {
+    const params: any = {};
+    if (propertyId && propertyId !== 'all') {
+        params.property_id = propertyId;
+    }
+    if (zoneId && zoneId !== 'all') {
+        params.zone_id = zoneId;
     }
 
-    const json = await response.json();
-    // Handle SuccessResponse format
-    if (json.success && Array.isArray(json.data)) {
-        return json.data;
+    try {
+        const response = await zoServer.get('/tasks', { params });
+        const json = response.data;
+        console.log('Tasks API Raw Response:', json); // Debug logging
+
+        // Handle SuccessResponse format
+        if (json.success && Array.isArray(json.data)) {
+            return json.data;
+        }
+        if (json.tasks && Array.isArray(json.tasks)) {
+            return json.tasks;
+        }
+        return [];
+    } catch (error) {
+        console.error("Failed to fetch tasks", error);
+        return [];
     }
-    // Fallback for previous format just in case
-    if (json.staff) {
-        return json.staff;
-    }
-    return [];
 }
