@@ -11,7 +11,7 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
-  
+
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Format phone number as user types
@@ -27,16 +27,16 @@ export function Login() {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (phoneNumber.length !== 10) {
       setError('Please enter a valid 10-digit phone number');
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
-      await zoServer.post('/api/v1/auth/login/mobile/otp/', {
+      await zoServer.post('/auth/login/mobile/otp', {
         mobile_country_code: '91',
         mobile_number: phoneNumber,
         message_channel: '',
@@ -90,15 +90,15 @@ export function Login() {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     const newOtp = [...otp];
-    
+
     pastedData.split('').forEach((digit, index) => {
       if (index < 6) {
         newOtp[index] = digit;
       }
     });
-    
+
     setOtp(newOtp);
-    
+
     // Focus last filled input or first empty
     const lastFilledIndex = Math.min(pastedData.length - 1, 5);
     otpInputRefs.current[lastFilledIndex]?.focus();
@@ -112,7 +112,7 @@ export function Login() {
   // Handle OTP verification
   const handleOtpSubmit = async (otpValue?: string) => {
     const otpToVerify = otpValue || otp.join('');
-    
+
     if (otpToVerify.length !== 6) {
       setError('Please enter the complete 6-digit OTP');
       return;
@@ -122,7 +122,7 @@ export function Login() {
     setError('');
 
     try {
-      const response = await zoServer.post('/api/v1/auth/login/mobile/', {
+      const response = await zoServer.post('/auth/login/mobile', {
         mobile_country_code: '91',
         mobile_number: phoneNumber,
         otp: otpToVerify,
@@ -159,13 +159,13 @@ export function Login() {
   // Handle resend OTP
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
-    
+
     setIsLoading(true);
     setOtp(['', '', '', '', '', '']);
     setError('');
-    
+
     try {
-      await zoServer.post('/api/v1/auth/login/mobile/otp/', {
+      await zoServer.post('/auth/login/mobile/otp', {
         mobile_country_code: '91',
         mobile_number: phoneNumber,
         message_channel: '',
@@ -219,13 +219,13 @@ export function Login() {
             // Phone Number Step
             <div>
               <div className="flex items-center justify-center mb-6 mx-auto">
-                <img 
-                  src="/lockedinwithzo.PNG" 
-                  alt="Locked in with Zo" 
+                <img
+                  src="/lockedinwithzo.PNG"
+                  alt="Locked in with Zo"
                   className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 object-contain"
                 />
               </div>
-              
+
               <h2 className="text-2xl font-semibold text-center mb-2">Welcome Back</h2>
               <p className="text-[#9f9fa9] text-center mb-8 text-sm">
                 Enter your phone number to receive a verification code
@@ -290,7 +290,7 @@ export function Login() {
               <div className="flex items-center justify-center w-16 h-16 bg-[#9ae600]/10 border border-[#9ae600]/30 rounded-2xl mb-6 mx-auto">
                 <Lock className="w-8 h-8 text-[#9ae600]" />
               </div>
-              
+
               <h2 className="text-2xl font-semibold text-center mb-2">Enter Verification Code</h2>
               <p className="text-[#9f9fa9] text-center mb-8 text-sm">
                 We've sent a 6-digit code to<br />
@@ -317,7 +317,7 @@ export function Login() {
                       />
                     ))}
                   </div>
-                  
+
                   {error && (
                     <div className="flex items-center gap-2 text-[#fb2c36] text-sm justify-center">
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />

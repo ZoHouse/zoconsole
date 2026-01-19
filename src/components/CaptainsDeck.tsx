@@ -14,7 +14,7 @@ interface CaptainsDeckProps {
 
 export function CaptainsDeck({ selectedProperty, onPropertyChange, subView: externalSubView, onSubViewChange }: CaptainsDeckProps) {
   const [internalSubView, setInternalSubView] = useState<'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks'>('overview');
-  
+
   const subView = externalSubView || internalSubView;
   const handleSubViewChange = (view: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks') => {
     if (onSubViewChange) {
@@ -26,9 +26,9 @@ export function CaptainsDeck({ selectedProperty, onPropertyChange, subView: exte
 
   return (
     <>
-      <Header 
-        selectedProperty={selectedProperty} 
-        onPropertyChange={onPropertyChange} 
+      <Header
+        selectedProperty={selectedProperty}
+        onPropertyChange={onPropertyChange}
         subView={subView}
         onSubViewChange={handleSubViewChange}
       />
@@ -72,11 +72,8 @@ interface HeaderProps {
 function Header({ selectedProperty, onPropertyChange, subView, onSubViewChange }: HeaderProps) {
   const properties = [
     { id: 'all', name: 'All Properties' },
-    { id: 'zo-house-bali', name: 'Zo House Bali' },
-    { id: 'zo-house-portugal', name: 'Zo House Portugal' },
-    { id: 'zo-house-thailand', name: 'Zo House Thailand' },
-    { id: 'zo-house-tulum', name: 'Zo House Tulum' },
-    { id: 'zo-house-barcelona', name: 'Zo House Barcelona' },
+    { id: 'BLRxZo', name: 'BLRxZo' },
+    { id: 'WTFxZo', name: 'WTFxZo' },
   ];
 
   return (
@@ -87,7 +84,7 @@ function Header({ selectedProperty, onPropertyChange, subView, onSubViewChange }
             <h1 className="text-xl sm:text-2xl">Captain's Deck</h1>
             <p className="text-xs sm:text-sm text-[#9f9fa9] mt-1">Property manager command center</p>
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-initial">
               <select
@@ -103,7 +100,7 @@ function Header({ selectedProperty, onPropertyChange, subView, onSubViewChange }
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-white" />
             </div>
-            
+
             <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#18181b] border border-[#27272a] rounded cursor-pointer hover:bg-[#27272a] whitespace-nowrap">
               <span className="text-xs sm:text-sm">Today</span>
               <ChevronDown className="w-4 h-4" />
@@ -115,55 +112,50 @@ function Header({ selectedProperty, onPropertyChange, subView, onSubViewChange }
         <div className="flex gap-2 overflow-x-auto">
           <button
             onClick={() => onSubViewChange('overview')}
-            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
-              subView === 'overview'
-                ? 'bg-[#9ae600] text-black'
-                : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${subView === 'overview'
+              ? 'bg-[#9ae600] text-black'
+              : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
+              }`}
           >
             <Camera className="w-4 h-4" />
             Overview
           </button>
           <button
             onClick={() => onSubViewChange('profitability')}
-            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
-              subView === 'profitability'
-                ? 'bg-[#9ae600] text-black'
-                : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${subView === 'profitability'
+              ? 'bg-[#9ae600] text-black'
+              : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
+              }`}
           >
             <DollarSign className="w-4 h-4" />
             Profitability
           </button>
           <button
             onClick={() => onSubViewChange('crew')}
-            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
-              subView === 'crew'
-                ? 'bg-[#9ae600] text-black'
-                : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${subView === 'crew'
+              ? 'bg-[#9ae600] text-black'
+              : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
+              }`}
           >
             <Users className="w-4 h-4" />
             Crew
           </button>
           <button
             onClick={() => onSubViewChange('tasks')}
-            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
-              subView === 'tasks'
-                ? 'bg-[#9ae600] text-black'
-                : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${subView === 'tasks'
+              ? 'bg-[#9ae600] text-black'
+              : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
+              }`}
           >
             <ClipboardList className="w-4 h-4" />
             Tasks
           </button>
           <button
             onClick={() => onSubViewChange('inventory')}
-            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
-              subView === 'inventory'
-                ? 'bg-[#9ae600] text-black'
-                : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
-            }`}
+            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${subView === 'inventory'
+              ? 'bg-[#9ae600] text-black'
+              : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
+              }`}
           >
             <Package className="w-4 h-4" />
             Inventory
@@ -191,7 +183,7 @@ function IoTStatus() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <IoTDevice 
+        <IoTDevice
           icon={<Sparkles className="w-5 h-5" />}
           label="Vibe Score"
           value="85%"
@@ -199,7 +191,7 @@ function IoTStatus() {
           bgColor="bg-[#9ae600]/10"
           iconColor="text-[#9ae600]"
         />
-        <IoTDevice 
+        <IoTDevice
           icon={<Volume2 className="w-5 h-5" />}
           label="Sound"
           value="65 dB"
@@ -207,7 +199,7 @@ function IoTStatus() {
           bgColor="bg-[#06b6d4]/10"
           iconColor="text-[#06b6d4]"
         />
-        <IoTDevice 
+        <IoTDevice
           icon={<Zap className="w-5 h-5" />}
           label="Power"
           value="2.4 kW"
@@ -215,7 +207,7 @@ function IoTStatus() {
           bgColor="bg-[#9ae600]/10"
           iconColor="text-[#9ae600]"
         />
-        <IoTDevice 
+        <IoTDevice
           icon={<Wifi className="w-5 h-5" />}
           label="WiFi Speed"
           value="98 Mbps"
@@ -260,7 +252,7 @@ function PnLSummary() {
   return (
     <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-6">
       <h2 className="text-lg mb-6">P&L Summary</h2>
-      
+
       <div className="space-y-4">
         <div className="flex items-center justify-between pb-4 border-b border-[#27272a]">
           <span className="text-[#9f9fa9]">Revenue</span>
@@ -340,18 +332,16 @@ function MaintenanceOverview() {
                   <span className="text-sm">{task.title}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    task.priority === 'high' ? 'bg-[#fb2c36]/10 text-[#fb2c36]' :
+                  <span className={`text-xs px-2 py-0.5 rounded ${task.priority === 'high' ? 'bg-[#fb2c36]/10 text-[#fb2c36]' :
                     task.priority === 'medium' ? 'bg-[#f0b100]/10 text-[#f0b100]' :
-                    'bg-[#06b6d4]/10 text-[#06b6d4]'
-                  }`}>
+                      'bg-[#06b6d4]/10 text-[#06b6d4]'
+                    }`}>
                     {task.priority}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    task.status === 'completed' ? 'bg-[#9ae600]/10 text-[#9ae600]' :
+                  <span className={`text-xs px-2 py-0.5 rounded ${task.status === 'completed' ? 'bg-[#9ae600]/10 text-[#9ae600]' :
                     task.status === 'in-progress' ? 'bg-[#06b6d4]/10 text-[#06b6d4]' :
-                    'bg-[#71717b]/10 text-[#71717b]'
-                  }`}>
+                      'bg-[#71717b]/10 text-[#71717b]'
+                    }`}>
                     {task.status}
                   </span>
                 </div>
@@ -366,62 +356,62 @@ function MaintenanceOverview() {
 
 function LowStockItems() {
   const lowStockItems = [
-    { 
-      id: 1, 
-      name: 'Toilet Paper', 
+    {
+      id: 1,
+      name: 'Toilet Paper',
       category: 'House Zones',
       location: 'All Bathrooms',
-      quantity: 12, 
+      quantity: 12,
       minThreshold: 50,
       unit: 'rolls',
       urgency: 'high'
     },
-    { 
-      id: 2, 
-      name: 'Hand Soap', 
+    {
+      id: 2,
+      name: 'Hand Soap',
       category: 'House Zones',
       location: 'Guest Rooms',
-      quantity: 8, 
+      quantity: 8,
       minThreshold: 30,
       unit: 'bottles',
       urgency: 'high'
     },
-    { 
-      id: 3, 
-      name: 'Coffee Beans', 
+    {
+      id: 3,
+      name: 'Coffee Beans',
       category: 'Kitchen',
       location: 'Cafe Storage',
-      quantity: 2.5, 
+      quantity: 2.5,
       minThreshold: 10,
       unit: 'kg',
       urgency: 'medium'
     },
-    { 
-      id: 4, 
-      name: 'Olive Oil', 
+    {
+      id: 4,
+      name: 'Olive Oil',
       category: 'Kitchen',
       location: 'Kitchen Pantry',
-      quantity: 3, 
+      quantity: 3,
       minThreshold: 8,
       unit: 'liters',
       urgency: 'medium'
     },
-    { 
-      id: 5, 
-      name: 'Cleaning Supplies', 
+    {
+      id: 5,
+      name: 'Cleaning Supplies',
       category: 'House Zones',
       location: 'Maintenance Room',
-      quantity: 5, 
+      quantity: 5,
       minThreshold: 20,
       unit: 'items',
       urgency: 'high'
     },
-    { 
-      id: 6, 
-      name: 'Fresh Towels', 
+    {
+      id: 6,
+      name: 'Fresh Towels',
       category: 'House Zones',
       location: 'Linen Closet',
-      quantity: 18, 
+      quantity: 18,
       minThreshold: 50,
       unit: 'pieces',
       urgency: 'medium'
@@ -446,42 +436,37 @@ function LowStockItems() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {lowStockItems.map(item => (
-          <div key={item.id} className={`bg-[#1a1a1a] border rounded-lg p-4 hover:border-[#9ae600] transition-colors ${
-            item.urgency === 'high' ? 'border-[#fb2c36]/50' : 'border-[#f0b100]/50'
-          }`}>
+          <div key={item.id} className={`bg-[#1a1a1a] border rounded-lg p-4 hover:border-[#9ae600] transition-colors ${item.urgency === 'high' ? 'border-[#fb2c36]/50' : 'border-[#f0b100]/50'
+            }`}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-sm">{item.name}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    item.urgency === 'high' 
-                      ? 'bg-[#fb2c36]/10 text-[#fb2c36]' 
-                      : 'bg-[#f0b100]/10 text-[#f0b100]'
-                  }`}>
+                  <span className={`text-xs px-2 py-0.5 rounded ${item.urgency === 'high'
+                    ? 'bg-[#fb2c36]/10 text-[#fb2c36]'
+                    : 'bg-[#f0b100]/10 text-[#f0b100]'
+                    }`}>
                     {item.urgency}
                   </span>
                 </div>
                 <div className="text-xs text-[#9f9fa9] mb-2">{item.location}</div>
               </div>
-              <Package className={`w-4 h-4 ${
-                item.urgency === 'high' ? 'text-[#fb2c36]' : 'text-[#f0b100]'
-              }`} />
+              <Package className={`w-4 h-4 ${item.urgency === 'high' ? 'text-[#fb2c36]' : 'text-[#f0b100]'
+                }`} />
             </div>
 
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-[#9f9fa9]">Stock Level</span>
-                <span className={`text-sm ${
-                  item.urgency === 'high' ? 'text-[#fb2c36]' : 'text-[#f0b100]'
-                }`}>
+                <span className={`text-sm ${item.urgency === 'high' ? 'text-[#fb2c36]' : 'text-[#f0b100]'
+                  }`}>
                   {item.quantity} {item.unit}
                 </span>
               </div>
               <div className="bg-[#09090b] rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all ${
-                    item.urgency === 'high' ? 'bg-[#fb2c36]' : 'bg-[#f0b100]'
-                  }`}
+                <div
+                  className={`h-2 rounded-full transition-all ${item.urgency === 'high' ? 'bg-[#fb2c36]' : 'bg-[#f0b100]'
+                    }`}
                   style={{ width: `${(item.quantity / item.minThreshold) * 100}%` }}
                 ></div>
               </div>
@@ -687,9 +672,8 @@ function FeedbackAndRatings() {
 
         <div className="space-y-3">
           {recentReviews.slice(0, 1).map(review => (
-            <div key={review.id} className={`bg-[#1a1a1a] border rounded-lg p-4 transition-colors ${
-              review.responded ? 'border-[#27272a]' : 'border-[#f0b100]'
-            }`}>
+            <div key={review.id} className={`bg-[#1a1a1a] border rounded-lg p-4 transition-colors ${review.responded ? 'border-[#27272a]' : 'border-[#f0b100]'
+              }`}>
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -702,11 +686,10 @@ function FeedbackAndRatings() {
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-3 h-3 ${
-                            i < review.rating
-                              ? 'text-[#f0b100] fill-[#f0b100]'
-                              : 'text-[#71717b]'
-                          }`}
+                          className={`w-3 h-3 ${i < review.rating
+                            ? 'text-[#f0b100] fill-[#f0b100]'
+                            : 'text-[#71717b]'
+                            }`}
                         />
                       ))}
                     </div>
@@ -724,7 +707,7 @@ function FeedbackAndRatings() {
                   </span>
                 )}
               </div>
-              
+
               <p className="text-sm text-[#d4d4d8] leading-relaxed mb-3">{review.comment}</p>
 
               {review.responded ? (
