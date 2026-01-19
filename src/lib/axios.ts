@@ -22,7 +22,6 @@ const getDeviceSecret = () => {
 
 export const zoServer = axios.create({
   baseURL,
-  withCredentials: true, // Important for cookies (refresh token)
   headers: {
     'Content-Type': 'application/json',
     'Accept': '*/*',
