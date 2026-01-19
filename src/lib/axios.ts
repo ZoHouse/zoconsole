@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://zohm-api.up.railway.app/api/v1';
+const baseURL = import.meta.env.VITE_API_BASE_URL
 
 const getDeviceId = () => {
   let deviceId = localStorage.getItem('zo_device_id');
@@ -25,7 +25,7 @@ export const zoServer = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': '*/*',
-    'client-key': import.meta.env.VITE_ZO_CLIENT_KEY_WEB || '1482d843137574f36f74',
+    'client-key': import.meta.env.VITE_ZO_CLIENT_KEY_WEB,
     'client-device-id': getDeviceId(),
     'client-device-secret': getDeviceSecret(),
   },

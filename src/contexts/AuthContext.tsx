@@ -3,8 +3,6 @@ import { syncUserToSupabase, User } from '../lib/supabase';
 
 import { zoServer } from '../lib/axios';
 
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://zohm-api.up.railway.app/api/v1'; // Handled by zoServer now
-
 export interface AuthUser {
   id: string;
   mobile_number?: string;
