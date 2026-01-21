@@ -1,22 +1,23 @@
-import { ChevronDown, Wifi, WifiOff, ThermometerSun, Droplets, Zap, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Wrench, AlertCircle, Camera, Maximize2, DollarSign, Users, Volume2, Package, Star, MessageSquare, Sparkles, Plus, ClipboardList } from 'lucide-react';
+import { ChevronDown, Wifi, WifiOff, ThermometerSun, Droplets, Zap, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Wrench, AlertCircle, Camera, Maximize2, DollarSign, Users, Volume2, Package, Star, MessageSquare, Sparkles, Plus, ClipboardList, ListChecks } from 'lucide-react';
 import { useState } from 'react';
 import { Profitability } from './Profitability';
 import { Crew } from './Crew';
 import { InventoryNew } from './InventoryNew';
 import { TaskScheduler } from './TaskScheduler';
+import { PlaylistManager } from './PlaylistManager';
 
 interface CaptainsDeckProps {
   selectedProperty: string;
   onPropertyChange: (property: string) => void;
-  subView?: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks';
-  onSubViewChange?: (view: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks') => void;
+  subView?: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks' | 'playlists';
+  onSubViewChange?: (view: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks' | 'playlists') => void;
 }
 
 export function CaptainsDeck({ selectedProperty, onPropertyChange, subView: externalSubView, onSubViewChange }: CaptainsDeckProps) {
-  const [internalSubView, setInternalSubView] = useState<'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks'>('overview');
-
+  const [internalSubView, setInternalSubView] = useState<'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks' | 'playlists'>('overview');
+  
   const subView = externalSubView || internalSubView;
-  const handleSubViewChange = (view: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks') => {
+  const handleSubViewChange = (view: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks' | 'playlists') => {
     if (onSubViewChange) {
       onSubViewChange(view);
     } else {
@@ -58,6 +59,9 @@ export function CaptainsDeck({ selectedProperty, onPropertyChange, subView: exte
       {subView === 'tasks' && (
         <TaskScheduler selectedProperty={selectedProperty} onPropertyChange={onPropertyChange} />
       )}
+      {subView === 'playlists' && (
+        <PlaylistManager selectedProperty={selectedProperty} onPropertyChange={onPropertyChange} />
+      )}
     </>
   );
 }
@@ -65,8 +69,8 @@ export function CaptainsDeck({ selectedProperty, onPropertyChange, subView: exte
 interface HeaderProps {
   selectedProperty: string;
   onPropertyChange: (property: string) => void;
-  subView: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks';
-  onSubViewChange: (view: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks') => void;
+  subView: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks' | 'playlists';
+  onSubViewChange: (view: 'overview' | 'profitability' | 'crew' | 'inventory' | 'tasks' | 'playlists') => void;
 }
 
 function Header({ selectedProperty, onPropertyChange, subView, onSubViewChange }: HeaderProps) {
@@ -149,6 +153,17 @@ function Header({ selectedProperty, onPropertyChange, subView, onSubViewChange }
           >
             <ClipboardList className="w-4 h-4" />
             Tasks
+          </button>
+          <button
+            onClick={() => onSubViewChange('playlists')}
+            className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
+              subView === 'playlists'
+                ? 'bg-[#9ae600] text-black'
+                : 'bg-[#1a1a1a] border border-[#27272a] text-[#9f9fa9] hover:text-white'
+            }`}
+          >
+            <ListChecks className="w-4 h-4" />
+            Playlists
           </button>
           <button
             onClick={() => onSubViewChange('inventory')}

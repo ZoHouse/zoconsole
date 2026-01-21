@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Users, MapPin, Loader2, UserCircle, Check, RefreshCw, ChevronDown, Download } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, Users, MapPin, Loader2, UserCircle, Check, RefreshCw, ChevronDown, Download, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserInfoSidebar } from './sidebars';
 
@@ -8,20 +8,41 @@ interface UsersManagementProps {
   onPropertyChange: (property: string) => void;
 }
 
-interface SupabaseUser {
+export interface SupabaseUser {
   id: string;
   zo_user_id?: string;
   name?: string;
   username?: string;
   email?: string;
   phone?: string;
+  phone_number?: string;
   pfp?: string;
   role?: string;
   zo_membership?: string;
   city?: string;
   wallet_address?: string;
   created_at?: string;
+  updated_at?: string;
   zo_synced_at?: string;
+  zo_sync_status?: string;
+  last_seen?: string;
+}
+
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 export function UsersManagement({ selectedProperty, onPropertyChange }: UsersManagementProps) {
@@ -31,9 +52,13 @@ export function UsersManagement({ selectedProperty, onPropertyChange }: UsersMan
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('all');
   
+  // Debounced search query (300ms delay)
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  
   // Users from Supabase
   const [users, setUsers] = useState<SupabaseUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [userCount, setUserCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(50); // 50 users per page
@@ -49,67 +74,95 @@ export function UsersManagement({ selectedProperty, onPropertyChange }: UsersMan
     withWallets: 0,
   });
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
 
   // Sidebar state
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<SupabaseUser | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Fetch metrics
-  const fetchMetrics = async () => {
+  // Fetch metrics with error handling
+  const fetchMetrics = useCallback(async () => {
     setIsLoadingMetrics(true);
+    setMetricsError(null);
+    
     try {
       // Total users
-      const { count: total } = await supabase
+      const { count: total, error: totalError } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true });
 
+      if (totalError) throw totalError;
+
       // Cities count
-      const { data: cities } = await supabase
+      const { data: cities, error: citiesError } = await supabase
         .from('users')
         .select('city')
-        .not('city', 'is', null);
-      const uniqueCities = new Set(cities?.map(u => u.city)).size;
+        .not('city', 'is', null)
+        .neq('city', '');
+      
+      if (citiesError) throw citiesError;
+      const uniqueCities = new Set(cities?.map(u => u.city).filter(Boolean)).size;
 
-      // Role counts
-      const { count: founders } = await supabase
+      // Founders: check zo_membership (case-insensitive) OR founder_nfts_count > 0
+      const { count: foundersByMembership } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
-        .eq('zo_membership', 'founder');
+        .ilike('zo_membership', 'founder');
 
-      const { count: citizens } = await supabase
+      const { count: foundersByNfts } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
-        .eq('zo_membership', 'citizen');
+        .gt('founder_nfts_count', 0);
 
-      const { count: visitors } = await supabase
+      // Use the higher count (some founders may be identified by membership, others by NFT count)
+      const founders = Math.max(foundersByMembership || 0, foundersByNfts || 0);
+
+      // Citizens (case-insensitive)
+      const { count: citizens, error: citizensError } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
-        .eq('zo_membership', 'visitor');
+        .ilike('zo_membership', 'citizen');
 
-      // Wallets count
-      const { count: wallets } = await supabase
+      if (citizensError) throw citizensError;
+
+      // Visitors (case-insensitive)
+      const { count: visitors, error: visitorsError } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
-        .not('wallet_address', 'is', null);
+        .ilike('zo_membership', 'visitor');
+
+      if (visitorsError) throw visitorsError;
+
+      // Wallets count - check for non-null AND non-empty wallet_address
+      const { count: wallets, error: walletsError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .not('wallet_address', 'is', null)
+        .neq('wallet_address', '');
+
+      if (walletsError) throw walletsError;
 
       setMetrics({
         totalUsers: total || 0,
         totalCities: uniqueCities,
-        founders: founders || 0,
+        founders: founders,
         citizens: citizens || 0,
         visitors: visitors || 0,
         withWallets: wallets || 0,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching metrics:', err);
+      setMetricsError(err?.message || 'Failed to load metrics. Check Supabase connection.');
     } finally {
       setIsLoadingMetrics(false);
     }
-  };
+  }, []);
 
-  // Fetch users from Supabase with pagination
-  const fetchUsers = async () => {
+  // Fetch users from Supabase with pagination and error handling
+  const fetchUsers = useCallback(async () => {
     setIsLoadingUsers(true);
+    setUsersError(null);
+    
     try {
       const from = (currentPage - 1) * pageSize;
       const to = from + pageSize - 1;
@@ -117,46 +170,51 @@ export function UsersManagement({ selectedProperty, onPropertyChange }: UsersMan
       let query = supabase
         .from('users')
         .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
         .range(from, to);
 
-      if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,username.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
+      if (debouncedSearchQuery) {
+        query = query.or(`name.ilike.%${debouncedSearchQuery}%,email.ilike.%${debouncedSearchQuery}%,username.ilike.%${debouncedSearchQuery}%,phone.ilike.%${debouncedSearchQuery}%`);
       }
       
       if (roleFilter !== 'all') {
-        query = query.eq('zo_membership', roleFilter);
+        query = query.ilike('zo_membership', roleFilter);
       }
 
       const { data, count, error } = await query;
 
       if (error) {
-        console.error('Error fetching users:', error);
-      } else {
-        setUsers(data || []);
-        setUserCount(count || 0);
-        setTotalPages(Math.ceil((count || 0) / pageSize));
+        throw error;
       }
-    } catch (err) {
-      console.error('Error:', err);
+      
+      setUsers(data || []);
+      setUserCount(count || 0);
+      setTotalPages(Math.max(1, Math.ceil((count || 0) / pageSize)));
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      setUsersError(err?.message || 'Failed to load users. Check Supabase connection.');
+      setUsers([]);
+      setUserCount(0);
+      setTotalPages(1);
     } finally {
       setIsLoadingUsers(false);
     }
-  };
+  }, [currentPage, pageSize, debouncedSearchQuery, roleFilter]);
 
   useEffect(() => {
     fetchMetrics();
-  }, []);
+  }, [fetchMetrics]);
 
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filters change
-  }, [searchQuery, roleFilter]);
+  }, [debouncedSearchQuery, roleFilter]);
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchQuery, roleFilter]);
+  }, [fetchUsers]);
 
-  const handleUserClick = (userId: string) => {
-    setSelectedUserId(userId);
+  const handleUserClick = (user: SupabaseUser) => {
+    setSelectedUser(user);
     setIsSidebarOpen(true);
   };
 
@@ -169,11 +227,12 @@ export function UsersManagement({ selectedProperty, onPropertyChange }: UsersMan
       />
       <main className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-[1600px] space-y-6">
-          {activeView === 'overview' && <Overview metrics={metrics} isLoading={isLoadingMetrics} />}
+          {activeView === 'overview' && <Overview metrics={metrics} isLoading={isLoadingMetrics} error={metricsError} onRetry={fetchMetrics} />}
           {activeView === 'users' && (
             <UsersList
               users={users}
               isLoading={isLoadingUsers}
+              error={usersError}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               statusFilter={statusFilter}
@@ -195,11 +254,14 @@ export function UsersManagement({ selectedProperty, onPropertyChange }: UsersMan
         </div>
       </main>
 
-      {/* User Info Sidebar */}
+      {/* User Info Sidebar - Using Supabase data directly */}
       <UserInfoSidebar
         isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        userId={selectedUserId}
+        onClose={() => {
+          setIsSidebarOpen(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
       />
     </>
   );
@@ -270,13 +332,31 @@ interface OverviewProps {
     withWallets: number;
   };
   isLoading: boolean;
+  error: string | null;
+  onRetry: () => void;
 }
 
-function Overview({ metrics, isLoading }: OverviewProps) {
+function Overview({ metrics, isLoading, error, onRetry }: OverviewProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 text-[#9ae600] animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-[#fb2c36]/10 border border-[#fb2c36]/30 rounded-lg p-6 text-center">
+        <AlertCircle className="w-12 h-12 text-[#fb2c36] mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-[#fb2c36] mb-2">Failed to load metrics</h3>
+        <p className="text-sm text-[#9f9fa9] mb-4">{error}</p>
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 bg-[#fb2c36]/20 text-[#fb2c36] rounded hover:bg-[#fb2c36]/30 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -329,18 +409,6 @@ function Overview({ metrics, isLoading }: OverviewProps) {
         />
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-[#9ae600]/10 border border-[#9ae600]/30 rounded-lg p-4 flex items-start gap-3">
-        <RefreshCw className="w-5 h-5 text-[#9ae600] flex-shrink-0 mt-0.5" />
-        <div>
-          <h4 className="text-sm font-medium text-[#9ae600]">Smart Incremental Sync</h4>
-          <p className="text-xs text-[#9f9fa9] mt-1">
-            By default, only new users are synced. Check "Force full sync" to re-sync all users (useful after schema changes).
-            The sync will continue even if some users fail, skipping problematic records.
-          </p>
-        </div>
-      </div>
-
       {/* User Growth */}
       <div className="bg-[#09090b] border border-[#27272a] rounded-lg">
         <div className="p-4 border-b border-[#27272a]">
@@ -358,6 +426,7 @@ function Overview({ metrics, isLoading }: OverviewProps) {
 interface UsersListProps {
   users: SupabaseUser[];
   isLoading: boolean;
+  error: string | null;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   statusFilter: 'all' | 'active' | 'inactive' | 'suspended';
@@ -366,7 +435,7 @@ interface UsersListProps {
   onRoleFilterChange: (role: string) => void;
   locationFilter: string;
   onLocationFilterChange: (location: string) => void;
-  onUserClick: (userId: string) => void;
+  onUserClick: (user: SupabaseUser) => void;
   onRefresh: () => void;
   currentPage: number;
   totalPages: number;
@@ -377,7 +446,8 @@ interface UsersListProps {
 
 function UsersList({ 
   users, 
-  isLoading, 
+  isLoading,
+  error,
   searchQuery, 
   onSearchChange, 
   statusFilter, 
@@ -394,6 +464,9 @@ function UsersList({
   pageSize,
   totalCount
 }: UsersListProps) {
+  // Calculate correct row number accounting for pagination
+  const getRowNumber = (index: number) => ((currentPage - 1) * pageSize) + index + 1;
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -404,7 +477,7 @@ function UsersList({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9f9fa9]" />
             <input
               type="text"
-              placeholder="Search users by name, email, phone, or wallet..."
+              placeholder="Search users by name, email, phone..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm text-white placeholder:text-[#9f9fa9] focus:outline-none focus:border-[#9ae600]"
@@ -429,9 +502,10 @@ function UsersList({
           {/* Refresh */}
           <button 
             onClick={onRefresh}
-            className="flex items-center gap-2 px-4 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm hover:bg-[#27272a] transition-colors whitespace-nowrap"
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm hover:bg-[#27272a] transition-colors whitespace-nowrap disabled:opacity-50"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
 
@@ -443,18 +517,37 @@ function UsersList({
         </div>
       </div>
 
+      {/* Error State */}
+      {error && (
+        <div className="bg-[#fb2c36]/10 border border-[#fb2c36]/30 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-[#fb2c36] flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="text-sm font-medium text-[#fb2c36]">Failed to load users</h4>
+            <p className="text-xs text-[#9f9fa9] mt-1">{error}</p>
+          </div>
+          <button
+            onClick={onRefresh}
+            className="px-3 py-1 bg-[#fb2c36]/20 text-[#fb2c36] rounded text-xs hover:bg-[#fb2c36]/30 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Users Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-[#9ae600] animate-spin" />
         </div>
-      ) : users.length === 0 ? (
+      ) : !error && users.length === 0 ? (
         <div className="text-center py-12">
           <Users className="w-12 h-12 text-[#71717b] mx-auto mb-4" />
           <p className="text-[#9f9fa9]">No users found</p>
-          <p className="text-xs text-[#71717b] mt-1">Click "Sync from Zo API" to fetch users</p>
+          <p className="text-xs text-[#71717b] mt-1">
+            {searchQuery ? 'Try adjusting your search or filters' : 'Users will appear here once synced'}
+          </p>
         </div>
-      ) : (
+      ) : !error && (
         <div className="bg-[#09090b] border border-[#27272a] rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -474,9 +567,9 @@ function UsersList({
                   <tr 
                     key={user.id} 
                     className="border-b border-[#27272a] hover:bg-[#18181b] cursor-pointer transition-colors"
-                    onClick={() => onUserClick(user.zo_user_id || user.id)}
+                    onClick={() => onUserClick(user)}
                   >
-                    <td className="px-4 py-3 text-sm text-[#71717b]">{index + 1}</td>
+                    <td className="px-4 py-3 text-sm text-[#71717b]">{getRowNumber(index)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#27272a] overflow-hidden flex-shrink-0">

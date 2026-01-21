@@ -1,17 +1,17 @@
 /**
- * UserInfoSidebar - Matches reference design
- * Uses CAS_USERS API: /api/v1/cas/users/{userId}/
+ * UserInfoSidebar - Displays user info from Supabase
+ * Single source of truth: Supabase users table
  */
 
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X, User, Mail, Phone, Wallet, MapPin, Calendar, Tag, Loader2, ExternalLink, Copy } from 'lucide-react';
-import { useUserById } from '../../hooks/useZoApi';
+import { X, User, Mail, Phone, Wallet, MapPin, Calendar, Tag, Copy, Clock } from 'lucide-react';
+import type { SupabaseUser } from '../UsersManagement';
 
 interface UserInfoSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  userId: string | null;
+  user: SupabaseUser | null;
   onRemoveAccess?: () => void;
 }
 
@@ -20,8 +20,8 @@ const formatAddress = (address: string): string => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
-const formatDate = (dateString: string): string => {
-  if (!dateString) return '';
+const formatDate = (dateString: string | undefined): string => {
+  if (!dateString) return '-';
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -29,22 +29,32 @@ const formatDate = (dateString: string): string => {
   });
 };
 
-const formatCapitalize = (str: string): string => {
-  if (!str) return '';
+const formatDateTime = (dateString: string | undefined): string => {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatCapitalize = (str: string | undefined): string => {
+  if (!str) return '-';
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text);
 };
 
 const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
   isOpen,
   onClose,
-  userId,
+  user,
   onRemoveAccess,
 }) => {
-  // Fetch user data using CAS_USERS API
-  const { data: userResponse, isLoading, error } = useUserById(isOpen ? userId || undefined : undefined);
-  
-  const userInfo = userResponse?.data || userResponse;
-
   // Close on ESC
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -62,26 +72,9 @@ const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
 
   if (!isOpen) return null;
 
-  // Data from API
-  const profile = userInfo?.profile || {};
-  const nickname = profile.nickname || 'Unknown User';
-  const fullName = profile.full_name;
-  const gender = profile.gender;
-  const bio = profile.bio;
-  const pid = profile.pid;
-  const avatar = profile.avatar?.image || profile.pfp?.image || profile.pfp_image;
-  const country = profile.country?.name;
-  const cultures = profile.cultures || [];
-  const emails = userInfo?.emails || [];
-  const mobiles = userInfo?.mobiles || [];
-  const wallets = userInfo?.web3_wallets || [];
-  const membership = userInfo?.membership;
-  const createdAt = userInfo?.created_at;
-  const isFounder = String(membership).toLowerCase() === 'founder';
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
+  const isFounder = user?.zo_membership?.toLowerCase() === 'founder';
+  const displayName = user?.name || user?.username || 'Unknown User';
+  const displayPhone = user?.phone || (user?.phone_number ? user.phone_number : null);
 
   return ReactDOM.createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
@@ -123,7 +116,7 @@ const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
           }}
         >
           <span style={{ color: 'white', fontSize: '16px', fontWeight: 500 }}>
-            User Info
+            User Details
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {onRemoveAccess && (
@@ -159,15 +152,7 @@ const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
-          {isLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-              <Loader2 size={24} color="#737373" style={{ animation: 'spin 1s linear infinite' }} />
-            </div>
-          ) : error ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#ef4444' }}>
-              <p>Failed to load user data</p>
-            </div>
-          ) : !userInfo ? (
+          {!user ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#737373' }}>
               <p>No user data found</p>
             </div>
@@ -186,8 +171,8 @@ const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
                     marginBottom: '12px',
                   }}
                 >
-                  {avatar ? (
-                    <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {user.pfp ? (
+                    <img src={user.pfp} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <User size={32} color="#525252" />
@@ -196,7 +181,7 @@ const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <h2 style={{ color: 'white', fontSize: '18px', fontWeight: 600, margin: 0 }}>
-                    {nickname}
+                    {displayName}
                   </h2>
                   {isFounder && (
                     <span style={{ color: '#eab308', fontSize: '12px', fontWeight: 500, backgroundColor: '#422006', padding: '2px 6px', borderRadius: '4px' }}>
@@ -204,6 +189,9 @@ const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
                     </span>
                   )}
                 </div>
+                {user.username && user.name && (
+                  <p style={{ color: '#737373', fontSize: '13px', marginTop: '4px' }}>@{user.username}</p>
+                )}
               </div>
 
               {/* Basic Info Section */}
@@ -212,161 +200,187 @@ const UserInfoSidebar: React.FC<UserInfoSidebarProps> = ({
                   Basic Info
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {fullName && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <User size={16} color="#737373" />
-                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Full Name:</span>
-                      <span style={{ color: 'white', fontSize: '13px' }}>{formatCapitalize(fullName)}</span>
-                    </div>
-                  )}
-                  {gender && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <User size={16} color="#737373" />
-                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Gender:</span>
-                      <span style={{ color: 'white', fontSize: '13px' }}>{formatCapitalize(gender)}</span>
-                    </div>
-                  )}
-                  {pid && (
+                  {/* Zo User ID */}
+                  {user.zo_user_id && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <Tag size={16} color="#737373" />
-                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Profile ID:</span>
-                      <span style={{ color: '#9ae600', fontSize: '13px', fontFamily: 'monospace' }}>{formatAddress(pid)}</span>
-                      <button onClick={() => copyToClipboard(pid)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Zo ID:</span>
+                      <span style={{ color: '#9ae600', fontSize: '13px', fontFamily: 'monospace' }}>{formatAddress(user.zo_user_id)}</span>
+                      <button onClick={() => copyToClipboard(user.zo_user_id!)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         <Copy size={12} color="#737373" />
                       </button>
                     </div>
                   )}
-                  {bio && (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <User size={16} color="#737373" style={{ marginTop: '2px' }} />
-                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Bio:</span>
-                      <span style={{ color: 'white', fontSize: '13px' }}>{bio}</span>
+
+                  {/* Membership */}
+                  {user.zo_membership && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <User size={16} color="#737373" />
+                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Membership:</span>
+                      <span style={{ 
+                        color: user.zo_membership === 'founder' ? '#eab308' : user.zo_membership === 'citizen' ? '#06b6d4' : '#9f9fa9', 
+                        fontSize: '13px',
+                        textTransform: 'capitalize'
+                      }}>
+                        {user.zo_membership}
+                      </span>
                     </div>
                   )}
-                  {createdAt && (
+
+                  {/* Role */}
+                  {user.role && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Tag size={16} color="#737373" />
+                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Role:</span>
+                      <span style={{ color: 'white', fontSize: '13px' }}>{formatCapitalize(user.role)}</span>
+                    </div>
+                  )}
+
+                  {/* Joined */}
+                  {user.created_at && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <Calendar size={16} color="#737373" />
                       <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Joined:</span>
-                      <span style={{ color: 'white', fontSize: '13px' }}>{formatDate(createdAt)}</span>
+                      <span style={{ color: 'white', fontSize: '13px' }}>{formatDate(user.created_at)}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Contact Info Section */}
-              {(emails.length > 0 || mobiles.length > 0) && (
+              {(user.email || displayPhone) && (
                 <div style={{ marginBottom: '20px' }}>
                   <h3 style={{ color: '#737373', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', marginBottom: '12px' }}>
                     Contact Info
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {emails.map((email: any, idx: number) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {user.email && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <Mail size={16} color="#737373" />
                         <a
-                          href={`mailto:${email.email_address}`}
+                          href={`mailto:${user.email}`}
                           style={{ color: '#9ae600', fontSize: '13px', textDecoration: 'none' }}
                         >
-                          {email.email_address}
+                          {user.email}
                         </a>
+                        <button onClick={() => copyToClipboard(user.email!)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          <Copy size={12} color="#737373" />
+                        </button>
                       </div>
-                    ))}
-                    {mobiles.map((mobile: any, idx: number) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    )}
+                    {displayPhone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <Phone size={16} color="#737373" />
                         <a
-                          href={`https://wa.me/${mobile.mobile_country_code}${mobile.mobile_number}`}
+                          href={`https://wa.me/${displayPhone.replace(/[^0-9]/g, '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ color: '#9ae600', fontSize: '13px', textDecoration: 'none' }}
                         >
-                          +{mobile.mobile_country_code} {mobile.mobile_number}
+                          {displayPhone}
                         </a>
-                        {mobile.has_whatsapp && (
-                          <span style={{ color: '#737373', fontSize: '11px' }}>(WhatsApp)</span>
-                        )}
+                        <button onClick={() => copyToClipboard(displayPhone)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          <Copy size={12} color="#737373" />
+                        </button>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Web3 Info Section */}
-              {wallets.length > 0 && (
+              {user.wallet_address && (
                 <div style={{ marginBottom: '20px' }}>
                   <h3 style={{ color: '#737373', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', marginBottom: '12px' }}>
                     Web3 Info
                   </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {wallets.map((wallet: any, idx: number) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <Wallet size={16} color="#737373" />
-                        <a
-                          href={`https://etherscan.io/address/${wallet.wallet_address}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: '#9ae600', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        >
-                          {formatAddress(wallet.wallet_address)}
-                          <ExternalLink size={12} color="#9ae600" />
-                        </a>
-                        {wallet.primary && (
-                          <span style={{ color: '#737373', fontSize: '11px' }}>(Primary)</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Cultures Section */}
-              {cultures.length > 0 && (
-                <div style={{ marginBottom: '20px' }}>
-                  <h3 style={{ color: '#737373', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', marginBottom: '12px' }}>
-                    Cultures
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {cultures.map((culture: any) => (
-                      <div key={culture.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                        {culture.icon && (
-                          <img src={culture.icon} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                        )}
-                        <div>
-                          <span style={{ color: 'white', fontSize: '13px' }}>{culture.name}</span>
-                          {culture.description && (
-                            <p style={{ color: '#737373', fontSize: '12px', margin: '4px 0 0' }}>{culture.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Wallet size={16} color="#737373" />
+                    <a
+                      href={`https://etherscan.io/address/${user.wallet_address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#9ae600', fontSize: '13px', textDecoration: 'none', fontFamily: 'monospace' }}
+                    >
+                      {formatAddress(user.wallet_address)}
+                    </a>
+                    <button onClick={() => copyToClipboard(user.wallet_address!)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <Copy size={12} color="#737373" />
+                    </button>
                   </div>
                 </div>
               )}
 
               {/* Location Section */}
-              {country && (
+              {user.city && (
                 <div style={{ marginBottom: '20px' }}>
                   <h3 style={{ color: '#737373', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', marginBottom: '12px' }}>
                     Location
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <MapPin size={16} color="#737373" />
-                    <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Country:</span>
-                    <span style={{ color: 'white', fontSize: '13px' }}>{country}</span>
+                    <span style={{ color: '#a3a3a3', fontSize: '13px' }}>City:</span>
+                    <span style={{ color: 'white', fontSize: '13px' }}>{user.city}</span>
                   </div>
                 </div>
               )}
+
+              {/* Sync Info Section */}
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ color: '#737373', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', marginBottom: '12px' }}>
+                  Sync Status
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {user.zo_sync_status && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ 
+                        width: '8px', 
+                        height: '8px', 
+                        borderRadius: '50%', 
+                        backgroundColor: user.zo_sync_status === 'synced' ? '#9ae600' : '#f0b100' 
+                      }} />
+                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Status:</span>
+                      <span style={{ color: 'white', fontSize: '13px', textTransform: 'capitalize' }}>{user.zo_sync_status}</span>
+                    </div>
+                  )}
+                  {user.zo_synced_at && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Clock size={16} color="#737373" />
+                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Last Synced:</span>
+                      <span style={{ color: 'white', fontSize: '13px' }}>{formatDateTime(user.zo_synced_at)}</span>
+                    </div>
+                  )}
+                  {user.last_seen && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Clock size={16} color="#737373" />
+                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Last Seen:</span>
+                      <span style={{ color: 'white', fontSize: '13px' }}>{formatDateTime(user.last_seen)}</span>
+                    </div>
+                  )}
+                  {user.updated_at && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Clock size={16} color="#737373" />
+                      <span style={{ color: '#a3a3a3', fontSize: '13px' }}>Updated:</span>
+                      <span style={{ color: 'white', fontSize: '13px' }}>{formatDateTime(user.updated_at)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Internal ID (for debugging) */}
+              <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #262626' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#525252', fontSize: '11px' }}>Internal ID:</span>
+                  <span style={{ color: '#525252', fontSize: '11px', fontFamily: 'monospace' }}>{formatAddress(user.id)}</span>
+                  <button onClick={() => copyToClipboard(user.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    <Copy size={10} color="#525252" />
+                  </button>
+                </div>
+              </div>
             </>
           )}
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>,
     document.body
   );

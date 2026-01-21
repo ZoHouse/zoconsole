@@ -261,26 +261,50 @@ export const useNode = (nodeId: string) => {
 
 /**
  * Node statistics aggregated - comprehensive data for Overview
+ * Updated for new schema with zones
  */
 export const useNodeStats = () => {
   return useQuery({
     queryKey: ['nodes', 'stats'],
     queryFn: async () => {
-      const { data: nodes, error } = await supabase.from('nodes').select('*');
+      // Fetch nodes and zones in parallel
+      const [nodesResult, zonesResult] = await Promise.all([
+        supabase.from('nodes').select('*'),
+        supabase.from('node_zones').select('*'),
+      ]);
       
-      if (error) throw error;
+      if (nodesResult.error) throw nodesResult.error;
+      if (zonesResult.error) throw zonesResult.error;
       
-      const allNodes = nodes || [];
+      const allNodes = nodesResult.data || [];
+      const allZones = zonesResult.data || [];
       const totalNodes = allNodes.length;
+      const totalZones = allZones.length;
       const activeNodes = allNodes.filter(n => n.status === 'active').length;
       const developingNodes = allNodes.filter(n => n.status === 'developing').length;
       const planningNodes = allNodes.filter(n => n.status === 'planning' || !n.status).length;
       
-      // Count by type
+      // Count zones per node
+      const zoneCountByNode: Record<string, number> = {};
+      allZones.forEach(z => {
+        zoneCountByNode[z.node_id] = (zoneCountByNode[z.node_id] || 0) + 1;
+      });
+      
+      // Nodes with zones
+      const nodesWithZones = allNodes.filter(n => (zoneCountByNode[n.id] || 0) > 0).length;
+      
+      // Count by node type (18 types)
       const typeCount: Record<string, number> = {};
       allNodes.forEach(n => {
         const type = n.type || 'unknown';
         typeCount[type] = (typeCount[type] || 0) + 1;
+      });
+      
+      // Count by zone type (13 types)
+      const zoneTypeCount: Record<string, number> = {};
+      allZones.forEach(z => {
+        const type = z.zone_type || 'unknown';
+        zoneTypeCount[type] = (zoneTypeCount[type] || 0) + 1;
       });
       
       // Count by country
@@ -291,13 +315,14 @@ export const useNodeStats = () => {
       });
       
       // Top cities with details
-      const cityData: Record<string, { count: number; country: string; types: Set<string> }> = {};
+      const cityData: Record<string, { count: number; country: string; types: Set<string>; zoneCount: number }> = {};
       allNodes.forEach(n => {
         const city = n.city || 'Unknown';
         if (!cityData[city]) {
-          cityData[city] = { count: 0, country: n.country || 'Unknown', types: new Set() };
+          cityData[city] = { count: 0, country: n.country || 'Unknown', types: new Set(), zoneCount: 0 };
         }
         cityData[city].count += 1;
+        cityData[city].zoneCount += zoneCountByNode[n.id] || 0;
         if (n.type) cityData[city].types.add(n.type);
       });
       
@@ -307,6 +332,7 @@ export const useNodeStats = () => {
           city,
           country: data.country,
           nodes: data.count,
+          zones: data.zoneCount,
           types: Array.from(data.types),
         }))
         .sort((a, b) => b.nodes - a.nodes)
@@ -315,40 +341,37 @@ export const useNodeStats = () => {
       // Unique cities
       const cities = [...new Set(allNodes.map(n => n.city).filter(Boolean))];
       
-      // Feature availability - count nodes that have each feature
-      const featureCount: Record<string, number> = {};
-      allNodes.forEach(n => {
-        if (n.features && Array.isArray(n.features)) {
-          n.features.forEach((feature: string) => {
-            featureCount[feature] = (featureCount[feature] || 0) + 1;
-          });
-        }
-      });
-      
-      // Convert to sorted array
-      const topFeatures = Object.entries(featureCount)
-        .map(([feature, count]) => ({ feature, count }))
+      // Top zone types
+      const topZoneTypes = Object.entries(zoneTypeCount)
+        .map(([zoneType, count]) => ({ zoneType, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
       
       // Data quality
       const nodesWithWebsite = allNodes.filter(n => n.website).length;
-      const nodesWithContact = allNodes.filter(n => n.contact_email).length;
+      const nodesWithContact = allNodes.filter(n => n.contact_email || n.phone).length;
       const nodesWithImage = allNodes.filter(n => n.image).length;
+      const nodesWithLogo = allNodes.filter(n => n.logo).length;
       const nodesWithCoords = allNodes.filter(n => n.latitude && n.longitude).length;
+      const nodesWithAddress = allNodes.filter(n => n.address).length;
+      const nodesWithHours = allNodes.filter(n => n.opening_hours).length;
       
-      // Calculate completeness score
+      // Calculate completeness score (updated for new schema)
       const completenessScores = allNodes.map(n => {
         let score = 0;
-        if (n.name) score += 15;
-        if (n.description) score += 15;
-        if (n.city) score += 10;
-        if (n.country) score += 10;
-        if (n.latitude && n.longitude) score += 15;
+        if (n.name) score += 10;
+        if (n.type) score += 5;
+        if (n.description) score += 10;
+        if (n.city) score += 5;
+        if (n.country) score += 5;
+        if (n.address) score += 10;
+        if (n.latitude && n.longitude) score += 10;
         if (n.website) score += 10;
-        if (n.contact_email) score += 10;
+        if (n.contact_email || n.phone) score += 10;
         if (n.image) score += 10;
-        if (n.features && n.features.length > 0) score += 5;
+        if (n.logo) score += 5;
+        if (n.opening_hours) score += 5;
+        if ((zoneCountByNode[n.id] || 0) > 0) score += 5;
         return score;
       });
       const avgCompletenessScore = totalNodes > 0 
@@ -371,73 +394,186 @@ export const useNodeStats = () => {
         .map(n => ({
           id: n.id,
           name: n.name || 'Unknown',
+          type: n.type,
           city: n.city || 'Unknown',
           updatedAt: n.updated_at,
           status: n.status,
+          zoneCount: zoneCountByNode[n.id] || 0,
         }));
       
       return {
         totalNodes,
+        totalZones,
         activeNodes,
         developingNodes,
         planningNodes,
+        nodesWithZones,
         typeCount,
+        zoneTypeCount,
         countryCount,
         cityCount: cities.length,
         topCities,
-        topFeatures,
+        topZoneTypes,
         nodesWithWebsite,
         nodesWithContact,
         nodesWithImage,
+        nodesWithLogo,
         nodesWithCoords,
+        nodesWithAddress,
+        nodesWithHours,
         avgCompletenessScore,
         nodesNotUpdated90Days,
         recentUpdates,
+        zoneCountByNode,
       };
     },
     staleTime: 60000,
   });
 };
 
-// Node type display info
-export const nodeTypeInfo: Record<string, { label: string; color: string; bgColor: string }> = {
-  schelling_point: { label: 'Schelling Point', color: 'text-[#2ECC71]', bgColor: 'bg-[#2ECC71]' },
-  degen_lounge: { label: 'Degen Lounge', color: 'text-[#9B59B6]', bgColor: 'bg-[#9B59B6]' },
-  zo_studio: { label: 'Zo Studio', color: 'text-[#E91E63]', bgColor: 'bg-[#E91E63]' },
-  flo_zone: { label: 'Flo Zone', color: 'text-[#1ABC9C]', bgColor: 'bg-[#1ABC9C]' },
-  bored_room: { label: 'Bored Room', color: 'text-[#607D8B]', bgColor: 'bg-[#607D8B]' },
-  liquidity_pool: { label: 'Liquidity Pool', color: 'text-[#00BCD4]', bgColor: 'bg-[#00BCD4]' },
-  multiverse: { label: 'Multiverse', color: 'text-[#673AB7]', bgColor: 'bg-[#673AB7]' },
-  battlefield: { label: 'Battlefield', color: 'text-[#F44336]', bgColor: 'bg-[#F44336]' },
-  bio_hack: { label: 'Bio Hack', color: 'text-[#4CAF50]', bgColor: 'bg-[#4CAF50]' },
-  cafe: { label: 'Cafe', color: 'text-[#795548]', bgColor: 'bg-[#795548]' },
-  '420': { label: '420', color: 'text-[#8BC34A]', bgColor: 'bg-[#8BC34A]' },
-  showcase: { label: 'Showcase', color: 'text-[#FF9800]', bgColor: 'bg-[#FF9800]' },
-  culture_house: { label: 'Culture House', color: 'text-[#9C27B0]', bgColor: 'bg-[#9C27B0]' },
-  hacker_house: { label: 'Hacker House', color: 'text-[#4A90E2]', bgColor: 'bg-[#4A90E2]' },
-  founder_house: { label: 'Founder House', color: 'text-[#FFC107]', bgColor: 'bg-[#FFC107]' },
-  staynode: { label: 'Staynode', color: 'text-[#E67E22]', bgColor: 'bg-[#E67E22]' },
+// ===========================================
+// NODE TYPES (18 types)
+// ===========================================
+
+export type NodeType = 
+  | 'zo_house' 
+  | 'zostel' 
+  | 'food' 
+  | 'stay' 
+  | 'park' 
+  | 'hospital' 
+  | 'fire_station' 
+  | 'post_office' 
+  | 'bar' 
+  | 'metro' 
+  | 'airport' 
+  | 'shopping' 
+  | 'art' 
+  | 'sports_arena' 
+  | 'arcade' 
+  | 'library' 
+  | 'gym' 
+  | 'startup_hub';
+
+// Node type display info (18 types)
+export const nodeTypeInfo: Record<string, { label: string; icon: string; color: string; bgColor: string }> = {
+  zo_house: { label: 'Zo House', icon: '🏠', color: 'text-[#9ae600]', bgColor: 'bg-[#9ae600]' },
+  zostel: { label: 'Zostel', icon: '🏨', color: 'text-[#E67E22]', bgColor: 'bg-[#E67E22]' },
+  food: { label: 'Food', icon: '🍱', color: 'text-[#FF9800]', bgColor: 'bg-[#FF9800]' },
+  stay: { label: 'Stay', icon: '🛏️', color: 'text-[#9B59B6]', bgColor: 'bg-[#9B59B6]' },
+  park: { label: 'Park', icon: '🌳', color: 'text-[#2ECC71]', bgColor: 'bg-[#2ECC71]' },
+  hospital: { label: 'Hospital', icon: '🏥', color: 'text-[#E91E63]', bgColor: 'bg-[#E91E63]' },
+  fire_station: { label: 'Fire Station', icon: '🧯', color: 'text-[#F44336]', bgColor: 'bg-[#F44336]' },
+  post_office: { label: 'Post Office', icon: '📮', color: 'text-[#FFC107]', bgColor: 'bg-[#FFC107]' },
+  bar: { label: 'Bar', icon: '🍺', color: 'text-[#795548]', bgColor: 'bg-[#795548]' },
+  metro: { label: 'Metro', icon: '🚊', color: 'text-[#607D8B]', bgColor: 'bg-[#607D8B]' },
+  airport: { label: 'Airport', icon: '✈️', color: 'text-[#00BCD4]', bgColor: 'bg-[#00BCD4]' },
+  shopping: { label: 'Shopping', icon: '🛍️', color: 'text-[#E91E63]', bgColor: 'bg-[#E91E63]' },
+  art: { label: 'Art', icon: '🎨', color: 'text-[#673AB7]', bgColor: 'bg-[#673AB7]' },
+  sports_arena: { label: 'Sports Arena', icon: '🏟️', color: 'text-[#4CAF50]', bgColor: 'bg-[#4CAF50]' },
+  arcade: { label: 'Arcade', icon: '🕹️', color: 'text-[#9C27B0]', bgColor: 'bg-[#9C27B0]' },
+  library: { label: 'Library', icon: '📚', color: 'text-[#8BC34A]', bgColor: 'bg-[#8BC34A]' },
+  gym: { label: 'Gym', icon: '🏋️', color: 'text-[#F44336]', bgColor: 'bg-[#F44336]' },
+  startup_hub: { label: 'Startup Hub', icon: '👨‍💻', color: 'text-[#4A90E2]', bgColor: 'bg-[#4A90E2]' },
+};
+
+// ===========================================
+// ZONE TYPES (13 types)
+// ===========================================
+
+export type ZoneType = 
+  | 'schelling_point' 
+  | 'degen_lounge' 
+  | 'zo_studio' 
+  | 'flo_zone' 
+  | 'liquidity_pool' 
+  | 'multiverse' 
+  | 'battlefield' 
+  | 'bio_hack' 
+  | 'zo_cafe' 
+  | '420' 
+  | 'showcase' 
+  | 'dorms' 
+  | 'private_rooms';
+
+// Zone type display info (13 types)
+export const zoneTypeInfo: Record<string, { label: string; color: string; bgColor: string; description: string }> = {
+  schelling_point: { label: 'Schelling Point', color: 'text-[#2ECC71]', bgColor: 'bg-[#2ECC71]', description: 'Coordination/meeting space' },
+  degen_lounge: { label: 'Degen Lounge', color: 'text-[#9B59B6]', bgColor: 'bg-[#9B59B6]', description: 'Social/trading culture space' },
+  zo_studio: { label: 'Zo Studio', color: 'text-[#E91E63]', bgColor: 'bg-[#E91E63]', description: 'Recording/production facility' },
+  flo_zone: { label: 'Flo Zone', color: 'text-[#1ABC9C]', bgColor: 'bg-[#1ABC9C]', description: 'Deep work/flow state workspace' },
+  liquidity_pool: { label: 'Liquidity Pool', color: 'text-[#00BCD4]', bgColor: 'bg-[#00BCD4]', description: 'Pool/water feature' },
+  multiverse: { label: 'Multiverse', color: 'text-[#673AB7]', bgColor: 'bg-[#673AB7]', description: 'Multi-purpose flex space' },
+  battlefield: { label: 'Battlefield', color: 'text-[#F44336]', bgColor: 'bg-[#F44336]', description: 'Competition/sports area' },
+  bio_hack: { label: 'Bio Hack', color: 'text-[#4CAF50]', bgColor: 'bg-[#4CAF50]', description: 'Health/fitness/biohacking' },
+  zo_cafe: { label: 'Zo Cafe', color: 'text-[#795548]', bgColor: 'bg-[#795548]', description: 'Food/coffee service' },
+  '420': { label: '420', color: 'text-[#8BC34A]', bgColor: 'bg-[#8BC34A]', description: 'Smoking-friendly space' },
+  showcase: { label: 'Showcase', color: 'text-[#FF9800]', bgColor: 'bg-[#FF9800]', description: 'Exhibition/display area' },
+  dorms: { label: 'Dorms', color: 'text-[#607D8B]', bgColor: 'bg-[#607D8B]', description: 'Shared accommodation' },
+  private_rooms: { label: 'Private Rooms', color: 'text-[#9C27B0]', bgColor: 'bg-[#9C27B0]', description: 'Private accommodation' },
 };
 
 // ===========================================
 // NODE MUTATIONS (CRUD)
 // ===========================================
 
+// ===========================================
+// NODE INPUT INTERFACE (Updated Schema)
+// ===========================================
+
+export interface OpeningHours {
+  monday?: string;
+  tuesday?: string;
+  wednesday?: string;
+  thursday?: string;
+  friday?: string;
+  saturday?: string;
+  sunday?: string;
+}
+
 export interface NodeInput {
   id?: string;
   name: string;
-  type?: string;
+  type?: NodeType | string;
+  status?: 'active' | 'developing' | 'planning';
   description?: string;
   city?: string;
   country?: string;
+  address?: string;
   latitude?: number;
   longitude?: number;
   website?: string;
   twitter?: string;
+  instagram?: string;
+  phone?: string;
   contact_email?: string;
+  logo?: string;
   image?: string;
-  features?: string[];
-  status?: string;
+  opening_hours?: OpeningHours;
+  metadata?: Record<string, any>;
+}
+
+// ===========================================
+// ZONE INPUT INTERFACE
+// ===========================================
+
+export interface ZoneInput {
+  id?: string;
+  node_id: string;
+  zone_type: ZoneType | string;
+  name?: string;
+  description?: string;
+  capacity?: number;
+  floor?: string;
+  is_available?: boolean;
+  availability_notes?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface Zone extends ZoneInput {
+  id: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /**
@@ -518,6 +654,242 @@ export const useDeleteNode = () => {
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
       queryClient.invalidateQueries({ queryKey: ['cities'] });
     },
+  });
+};
+
+// ===========================================
+// NODE WITH ZONES HOOKS
+// ===========================================
+
+/**
+ * Fetch a single node with its zones
+ */
+export const useNodeWithZones = (nodeId: string) => {
+  return useQuery({
+    queryKey: ['node', nodeId, 'with-zones'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('nodes')
+        .select(`
+          *,
+          zones:node_zones(*)
+        `)
+        .eq('id', nodeId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!nodeId,
+  });
+};
+
+/**
+ * Fetch all nodes with zone counts
+ */
+export const useNodesWithZoneCounts = (filters?: {
+  city?: string;
+  country?: string;
+  type?: string;
+  status?: string;
+}) => {
+  return useQuery({
+    queryKey: ['nodes', 'with-zone-counts', filters],
+    queryFn: async () => {
+      // First fetch all nodes
+      let query = supabase.from('nodes').select('*');
+
+      if (filters?.city) {
+        query = query.eq('city', filters.city);
+      }
+      if (filters?.country) {
+        query = query.eq('country', filters.country);
+      }
+      if (filters?.type) {
+        query = query.eq('type', filters.type as any);
+      }
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+
+      const { data: nodes, error: nodesError } = await query.order('name');
+      if (nodesError) throw nodesError;
+
+      // Fetch all zones
+      const { data: zones, error: zonesError } = await supabase
+        .from('node_zones')
+        .select('node_id');
+      
+      if (zonesError) throw zonesError;
+
+      // Count zones per node
+      const zoneCounts: Record<string, number> = {};
+      (zones || []).forEach(z => {
+        zoneCounts[z.node_id] = (zoneCounts[z.node_id] || 0) + 1;
+      });
+
+      // Attach zone counts to nodes
+      return (nodes || []).map(node => ({
+        ...node,
+        zone_count: zoneCounts[node.id] || 0,
+      }));
+    },
+    staleTime: 60000,
+  });
+};
+
+// ===========================================
+// ZONE CRUD HOOKS
+// ===========================================
+
+/**
+ * Fetch zones for a specific node
+ */
+export const useNodeZones = (nodeId: string) => {
+  return useQuery({
+    queryKey: ['node', nodeId, 'zones'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('node_zones')
+        .select('*')
+        .eq('node_id', nodeId)
+        .order('zone_type');
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!nodeId,
+  });
+};
+
+/**
+ * Create a new zone for a node
+ */
+export const useCreateZone = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (zone: ZoneInput) => {
+      const { data, error } = await supabase
+        .from('node_zones')
+        .insert({
+          ...zone,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['node', variables.node_id, 'zones'] });
+      queryClient.invalidateQueries({ queryKey: ['node', variables.node_id, 'with-zones'] });
+      queryClient.invalidateQueries({ queryKey: ['nodes', 'with-zone-counts'] });
+    },
+  });
+};
+
+/**
+ * Update an existing zone
+ */
+export const useUpdateZone = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: ZoneInput & { id: string }) => {
+      const { data, error } = await supabase
+        .from('node_zones')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['node', data.node_id, 'zones'] });
+      queryClient.invalidateQueries({ queryKey: ['node', data.node_id, 'with-zones'] });
+    },
+  });
+};
+
+/**
+ * Delete a zone
+ */
+export const useDeleteZone = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ zoneId, nodeId }: { zoneId: string; nodeId: string }) => {
+      const { error } = await supabase
+        .from('node_zones')
+        .delete()
+        .eq('id', zoneId);
+      
+      if (error) throw error;
+      return { zoneId, nodeId };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['node', variables.nodeId, 'zones'] });
+      queryClient.invalidateQueries({ queryKey: ['node', variables.nodeId, 'with-zones'] });
+      queryClient.invalidateQueries({ queryKey: ['nodes', 'with-zone-counts'] });
+    },
+  });
+};
+
+/**
+ * Bulk create zones for a node
+ */
+export const useBulkCreateZones = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ nodeId, zones }: { nodeId: string; zones: Omit<ZoneInput, 'node_id'>[] }) => {
+      const zonesWithNodeId = zones.map(zone => ({
+        ...zone,
+        node_id: nodeId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { data, error } = await supabase
+        .from('node_zones')
+        .insert(zonesWithNodeId)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['node', variables.nodeId, 'zones'] });
+      queryClient.invalidateQueries({ queryKey: ['node', variables.nodeId, 'with-zones'] });
+      queryClient.invalidateQueries({ queryKey: ['nodes', 'with-zone-counts'] });
+    },
+  });
+};
+
+/**
+ * Fetch all zones (for stats)
+ */
+export const useAllZones = () => {
+  return useQuery({
+    queryKey: ['zones', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('node_zones')
+        .select('*')
+        .order('zone_type');
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60000,
   });
 };
 
