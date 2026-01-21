@@ -3,6 +3,11 @@ import type { Database, User } from './database.types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Service role key for admin operations (bypasses RLS)
+// Note: In Vite, env vars must be prefixed with VITE_ to be accessible
+const supabaseServiceRoleKey = 
+  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || 
+  import.meta.env.VITE_NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 
 let supabase: SupabaseClient<Database>;
 
@@ -17,6 +22,25 @@ if (supabaseUrl && supabaseAnonKey) {
   console.warn('Supabase environment variables not set.');
   supabase = createClient('https://placeholder.supabase.co', 'placeholder-key');
 }
+
+/**
+ * Get an admin Supabase client that bypasses RLS policies
+ * WARNING: Only use this for admin operations after verifying user permissions
+ */
+export const getAdminSupabaseClient = (): SupabaseClient<Database> => {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    console.warn('Service role key not configured. Falling back to anon client.');
+    console.warn('Please set VITE_SUPABASE_SERVICE_ROLE_KEY in your .env file.');
+    return supabase;
+  }
+  
+  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+};
 
 export { supabase };
 

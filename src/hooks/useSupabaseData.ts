@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
+import { supabase, getAdminSupabaseClient } from '../lib/supabase';
 
 // ===========================================
 // CITY DATA HOOKS
@@ -578,18 +578,20 @@ export interface Zone extends ZoneInput {
 
 /**
  * Create a new node
+ * Uses admin client to bypass RLS policies
  */
 export const useCreateNode = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (node: NodeInput) => {
-      const { data, error } = await supabase
+      const adminClient = getAdminSupabaseClient();
+      const { data, error } = await adminClient
         .from('nodes')
         .insert({
           ...node,
           id: node.id || `node-${Date.now()}`,
-          inserted_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .select()
@@ -607,13 +609,15 @@ export const useCreateNode = () => {
 
 /**
  * Update an existing node
+ * Uses admin client to bypass RLS policies
  */
 export const useUpdateNode = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: NodeInput & { id: string }) => {
-      const { data, error } = await supabase
+      const adminClient = getAdminSupabaseClient();
+      const { data, error } = await adminClient
         .from('nodes')
         .update({
           ...updates,
@@ -636,13 +640,15 @@ export const useUpdateNode = () => {
 
 /**
  * Delete a node
+ * Uses admin client to bypass RLS policies
  */
 export const useDeleteNode = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (nodeId: string) => {
-      const { error } = await supabase
+      const adminClient = getAdminSupabaseClient();
+      const { error } = await adminClient
         .from('nodes')
         .delete()
         .eq('id', nodeId);
@@ -764,13 +770,15 @@ export const useNodeZones = (nodeId: string) => {
 
 /**
  * Create a new zone for a node
+ * Uses admin client to bypass RLS policies
  */
 export const useCreateZone = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (zone: ZoneInput) => {
-      const { data, error } = await supabase
+      const adminClient = getAdminSupabaseClient();
+      const { data, error } = await adminClient
         .from('node_zones')
         .insert({
           ...zone,
@@ -793,13 +801,15 @@ export const useCreateZone = () => {
 
 /**
  * Update an existing zone
+ * Uses admin client to bypass RLS policies
  */
 export const useUpdateZone = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: ZoneInput & { id: string }) => {
-      const { data, error } = await supabase
+      const adminClient = getAdminSupabaseClient();
+      const { data, error } = await adminClient
         .from('node_zones')
         .update({
           ...updates,
@@ -821,13 +831,15 @@ export const useUpdateZone = () => {
 
 /**
  * Delete a zone
+ * Uses admin client to bypass RLS policies
  */
 export const useDeleteZone = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async ({ zoneId, nodeId }: { zoneId: string; nodeId: string }) => {
-      const { error } = await supabase
+      const adminClient = getAdminSupabaseClient();
+      const { error } = await adminClient
         .from('node_zones')
         .delete()
         .eq('id', zoneId);
@@ -845,12 +857,14 @@ export const useDeleteZone = () => {
 
 /**
  * Bulk create zones for a node
+ * Uses admin client to bypass RLS policies
  */
 export const useBulkCreateZones = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async ({ nodeId, zones }: { nodeId: string; zones: Omit<ZoneInput, 'node_id'>[] }) => {
+      const adminClient = getAdminSupabaseClient();
       const zonesWithNodeId = zones.map(zone => ({
         ...zone,
         node_id: nodeId,
@@ -858,7 +872,7 @@ export const useBulkCreateZones = () => {
         updated_at: new Date().toISOString(),
       }));
 
-      const { data, error } = await supabase
+      const { data, error } = await adminClient
         .from('node_zones')
         .insert(zonesWithNodeId)
         .select();
