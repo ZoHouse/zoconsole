@@ -1,60 +1,48 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, Play, Pause, Archive, MapPin, Globe, Twitter, Mail, AlertTriangle, Download, Eye, MoreVertical, ChevronDown, Map, BarChart3, Home, Building, Compass, Waves, Hotel, Check, X as XIcon, ExternalLink, Image as ImageIcon, Zap, Target, Loader2 } from 'lucide-react';
-import { useNodes, useNodeStats, nodeTypeInfo, useCreateNode, useUpdateNode, useDeleteNode, useUserCountsByCity, NodeInput } from '../hooks/useSupabaseData';
+import { Plus, Search, Edit, Trash2, MapPin, Globe, Twitter, Mail, AlertTriangle, Download, MoreVertical, ChevronDown, Home, Building, Check, X as XIcon, ExternalLink, Zap, Target, Loader2, Phone, Instagram, Clock, Layers, Users, Calendar } from 'lucide-react';
+import { 
+  useNodes, 
+  useNodeStats, 
+  nodeTypeInfo, 
+  zoneTypeInfo,
+  useCreateNode, 
+  useUpdateNode, 
+  useDeleteNode, 
+  useUserCountsByCity, 
+  useNodeZones,
+  useCreateZone,
+  useUpdateZone,
+  useDeleteZone,
+  useNodesWithZoneCounts,
+  NodeInput,
+  ZoneInput,
+  OpeningHours,
+  NodeType,
+  ZoneType,
+} from '../hooks/useSupabaseData';
 
 interface NodeManagementProps {
   selectedProperty: string;
   onPropertyChange: (property: string) => void;
 }
 
-// Node types from database enum
-const NODE_TYPES = [
-  'schelling_point', 'degen_lounge', 'zo_studio', 'flo_zone', 'bored_room',
-  'liquidity_pool', 'multiverse', 'battlefield', 'bio_hack', 'cafe',
-  '420', 'showcase', 'culture_house', 'hacker_house', 'founder_house', 'staynode'
-] as const;
+// Node types (18 types) from database enum
+const NODE_TYPES: NodeType[] = [
+  'zo_house', 'zostel', 'food', 'stay', 'park', 'hospital',
+  'fire_station', 'post_office', 'bar', 'metro', 'airport',
+  'shopping', 'art', 'sports_arena', 'arcade', 'library', 'gym', 'startup_hub'
+];
+
+// Zone types (13 types) from database enum
+const ZONE_TYPES: ZoneType[] = [
+  'schelling_point', 'degen_lounge', 'zo_studio', 'flo_zone',
+  'liquidity_pool', 'multiverse', 'battlefield', 'bio_hack',
+  'zo_cafe', '420', 'showcase', 'dorms', 'private_rooms'
+];
 
 const NODE_STATUSES = ['active', 'developing', 'planning'] as const;
 
-// Available node features
-const AVAILABLE_FEATURES = [
-  'Co-living',
-  'Co-working',
-  'Cafe',
-  'Restaurant',
-  'Bar',
-  'Event Space',
-  'Meeting Rooms',
-  'Private Rooms',
-  'Dorms',
-  'Kitchen',
-  'Laundry',
-  'Gym',
-  'Pool',
-  'Rooftop',
-  'Garden',
-  'Parking',
-  'WiFi',
-  'Pet Friendly',
-  'Workspace',
-  'Recording Studio',
-  'Podcast Room',
-  'Gaming Zone',
-  'Library',
-  'Meditation Room',
-  'Yoga Space',
-  'Art Studio',
-  'Music Room',
-  'Workshop Space',
-  'Terrace',
-  'Balcony',
-  'AC',
-  '24/7 Access',
-  'Security',
-  'Housekeeping',
-  'Breakfast Included',
-  'Airport Shuttle',
-] as const;
+const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 export function NodeManagement({ selectedProperty, onPropertyChange }: NodeManagementProps) {
   const [activeView, setActiveView] = useState<'overview' | 'nodes' | 'analytics'>('overview');
@@ -205,11 +193,12 @@ function Overview() {
   }
 
   const typeEntries = Object.entries(stats?.typeCount || {}).sort((a, b) => b[1] - a[1]);
+  const zoneTypeEntries = Object.entries(stats?.zoneTypeCount || {}).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-6">
       {/* Key Metrics - Single Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <MetricCard
           icon={<Home className="w-4 h-4" />}
           label="Total Nodes"
@@ -218,18 +207,25 @@ function Overview() {
           color="text-[#9ae600]"
         />
         <MetricCard
+          icon={<Layers className="w-4 h-4" />}
+          label="Total Zones"
+          value={String(stats?.totalZones || 0)}
+          subtitle={`In ${stats?.nodesWithZones || 0} nodes`}
+          color="text-[#06b6d4]"
+        />
+        <MetricCard
           icon={<Globe className="w-4 h-4" />}
           label="Geographic Reach"
           value={String(stats?.cityCount || 0)}
           subtitle={`Cities in ${Object.keys(stats?.countryCount || {}).length} countries`}
-          color="text-[#06b6d4]"
+          color="text-[#9B59B6]"
         />
         <MetricCard
           icon={<Zap className="w-4 h-4" />}
           label="Active Nodes"
           value={String(stats?.activeNodes || 0)}
           subtitle={`${stats?.totalNodes ? Math.round((stats.activeNodes / stats.totalNodes) * 100) : 0}% of network`}
-          color="text-[#9ae600]"
+          color="text-[#2ECC71]"
         />
         <MetricCard
           icon={<Building className="w-4 h-4" />}
@@ -250,17 +246,17 @@ function Overview() {
       {/* Node Types */}
       <div className="bg-[#09090b] border border-[#27272a] rounded-lg">
         <div className="p-4 border-b border-[#27272a]">
-          <h3 className="text-lg">Network by Type</h3>
+          <h3 className="text-lg">Network by Node Type</h3>
           <p className="text-sm text-[#9f9fa9] mt-1">Distribution across {typeEntries.length} node categories</p>
         </div>
         <div className="p-4 space-y-3">
           {typeEntries.slice(0, 8).map(([type, count]) => {
-            const typeConfig = nodeTypeInfo[type] || { label: type, color: 'text-[#9f9fa9]', bgColor: 'bg-[#9f9fa9]' };
+            const typeConfig = nodeTypeInfo[type] || { label: type, icon: '📍', color: 'text-[#9f9fa9]', bgColor: 'bg-[#9f9fa9]' };
             const percentage = stats?.totalNodes ? Math.round((count / stats.totalNodes) * 100) : 0;
             return (
               <NodeTypeBar
                 key={type}
-                icon={<Home className="w-4 h-4" />}
+                icon={<span className="text-sm">{typeConfig.icon}</span>}
                 label={typeConfig.label}
                 count={count}
                 total={stats?.totalNodes || 0}
@@ -272,7 +268,7 @@ function Overview() {
         </div>
       </div>
 
-      {/* Top Cities & Features */}
+      {/* Top Cities & Zone Types */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Cities */}
         <div className="bg-[#09090b] border border-[#27272a] rounded-lg">
@@ -282,12 +278,13 @@ function Overview() {
           </div>
           <div className="p-4 space-y-3">
             {stats?.topCities && stats.topCities.length > 0 ? (
-              stats.topCities.slice(0, 5).map((cityData) => (
+              stats.topCities.slice(0, 5).map((cityData: any) => (
                 <CityRow 
                   key={cityData.city}
                   city={cityData.city} 
                   country={cityData.country} 
-                  nodes={cityData.nodes} 
+                  nodes={cityData.nodes}
+                  zones={cityData.zones}
                   types={cityData.types} 
                 />
               ))
@@ -297,28 +294,30 @@ function Overview() {
           </div>
         </div>
 
-        {/* Feature Popularity */}
+        {/* Zone Types */}
         <div className="bg-[#09090b] border border-[#27272a] rounded-lg">
           <div className="p-4 border-b border-[#27272a]">
-            <h3 className="text-lg">Feature Availability</h3>
-            <p className="text-sm text-[#9f9fa9] mt-1">Most common amenities</p>
+            <h3 className="text-lg">Zone Types</h3>
+            <p className="text-sm text-[#9f9fa9] mt-1">Distribution of zone types across nodes</p>
           </div>
           <div className="p-4 space-y-3">
-            {stats?.topFeatures && stats.topFeatures.length > 0 ? (
-              stats.topFeatures.slice(0, 5).map((featureData) => {
-                const percentage = stats.totalNodes ? Math.round((featureData.count / stats.totalNodes) * 100) : 0;
+            {zoneTypeEntries.length > 0 ? (
+              zoneTypeEntries.slice(0, 5).map(([zoneType, count]) => {
+                const zoneConfig = zoneTypeInfo[zoneType] || { label: zoneType, color: 'text-[#9f9fa9]', bgColor: 'bg-[#9f9fa9]' };
+                const percentage = stats?.totalZones ? Math.round((count / stats.totalZones) * 100) : 0;
                 return (
-                  <FeatureBar 
-                    key={featureData.feature}
-                    label={featureData.feature} 
-                    count={featureData.count} 
-                    total={stats.totalNodes} 
-                    percentage={percentage} 
+                  <ZoneTypeBar 
+                    key={zoneType}
+                    label={zoneConfig.label} 
+                    count={count} 
+                    total={stats?.totalZones || 0} 
+                    percentage={percentage}
+                    color={zoneConfig.bgColor}
                   />
                 );
               })
             ) : (
-              <div className="text-center py-4 text-[#9f9fa9]">No feature data available</div>
+              <div className="text-center py-4 text-[#9f9fa9]">No zones added yet</div>
             )}
           </div>
         </div>
@@ -339,15 +338,21 @@ function Overview() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#9f9fa9]">Nodes with Website</span>
+              <span className="text-sm text-[#9f9fa9]">Nodes with Zones</span>
               <span className="text-lg">
-                {stats?.nodesWithWebsite || 0}/{stats?.totalNodes || 0} ({stats?.totalNodes ? Math.round((stats.nodesWithWebsite / stats.totalNodes) * 100) : 0}%)
+                {stats?.nodesWithZones || 0}/{stats?.totalNodes || 0} ({stats?.totalNodes ? Math.round((stats.nodesWithZones / stats.totalNodes) * 100) : 0}%)
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#9f9fa9]">Nodes with Contact Info</span>
+              <span className="text-sm text-[#9f9fa9]">Nodes with Address</span>
               <span className="text-lg">
-                {stats?.nodesWithContact || 0}/{stats?.totalNodes || 0} ({stats?.totalNodes ? Math.round((stats.nodesWithContact / stats.totalNodes) * 100) : 0}%)
+                {stats?.nodesWithAddress || 0}/{stats?.totalNodes || 0} ({stats?.totalNodes ? Math.round((stats.nodesWithAddress / stats.totalNodes) * 100) : 0}%)
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#9f9fa9]">Nodes with Website</span>
+              <span className="text-lg">
+                {stats?.nodesWithWebsite || 0}/{stats?.totalNodes || 0} ({stats?.totalNodes ? Math.round((stats.nodesWithWebsite / stats.totalNodes) * 100) : 0}%)
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -365,6 +370,13 @@ function Overview() {
             <h3 className="text-lg">Data Quality Alerts</h3>
           </div>
           <div className="p-4 space-y-3">
+            {stats && stats.totalNodes - stats.nodesWithZones > 0 && (
+              <AlertItem
+                type="warning"
+                message={`${stats.totalNodes - stats.nodesWithZones} nodes have no zones configured`}
+                action="Add Zones"
+              />
+            )}
             {stats && stats.totalNodes - stats.nodesWithWebsite > 0 && (
               <AlertItem
                 type="warning"
@@ -375,7 +387,7 @@ function Overview() {
             {stats && stats.totalNodes - stats.nodesWithContact > 0 && (
               <AlertItem
                 type="warning"
-                message={`${stats.totalNodes - stats.nodesWithContact} nodes missing contact email`}
+                message={`${stats.totalNodes - stats.nodesWithContact} nodes missing contact info`}
                 action="Add Contact"
               />
             )}
@@ -411,16 +423,21 @@ function Overview() {
         </div>
         <div className="divide-y divide-[#27272a]">
           {stats?.recentUpdates && stats.recentUpdates.length > 0 ? (
-            stats.recentUpdates.map((update) => (
-              <UpdateRow
-                key={update.id}
-                node={update.name}
-                city={update.city}
-                action={update.status === 'active' ? 'Status: Active' : update.status === 'developing' ? 'Status: In Development' : 'Updated'}
-                time={formatTimeAgo(update.updatedAt)}
-                type={update.status === 'active' ? 'success' : 'info'}
-              />
-            ))
+            stats.recentUpdates.map((update: any) => {
+              const typeConfig = nodeTypeInfo[update.type] || { icon: '📍', label: update.type };
+              return (
+                <UpdateRow
+                  key={update.id}
+                  node={update.name}
+                  icon={typeConfig.icon}
+                  city={update.city}
+                  zoneCount={update.zoneCount}
+                  action={update.status === 'active' ? 'Status: Active' : update.status === 'developing' ? 'Status: In Development' : 'Updated'}
+                  time={formatTimeAgo(update.updatedAt)}
+                  type={update.status === 'active' ? 'success' : 'info'}
+                />
+              );
+            })
           ) : (
             <div className="p-4 text-center text-[#9f9fa9]">No recent updates</div>
           )}
@@ -462,18 +479,25 @@ interface NodeListProps {
 }
 
 function NodeList({ searchQuery, onSearchChange, statusFilter, onStatusFilterChange, typeFilter, onTypeFilterChange, locationFilter, onLocationFilterChange, onEditNode, onDeleteNode }: NodeListProps) {
-  const { data: rawNodes, isLoading } = useNodes();
+  const { data: rawNodes, isLoading } = useNodesWithZoneCounts();
   const { data: userCountsByCity } = useUserCountsByCity();
 
   // Transform Supabase nodes to display format
   const nodes = (rawNodes || []).map((node: any) => {
-    // Calculate completeness score
+    // Calculate completeness score (updated for new schema)
     let completeness = 0;
-    if (node.name) completeness += 20;
-    if (node.latitude && node.longitude) completeness += 20;
-    if (node.website) completeness += 20;
-    if (node.contact_email) completeness += 20;
-    if (node.image) completeness += 20;
+    if (node.name) completeness += 10;
+    if (node.type) completeness += 5;
+    if (node.description) completeness += 10;
+    if (node.city && node.country) completeness += 10;
+    if (node.address) completeness += 10;
+    if (node.latitude && node.longitude) completeness += 10;
+    if (node.website) completeness += 10;
+    if (node.contact_email || node.phone) completeness += 10;
+    if (node.image) completeness += 10;
+    if (node.logo) completeness += 5;
+    if (node.opening_hours) completeness += 5;
+    if ((node.zone_count || 0) > 0) completeness += 5;
 
     const city = node.city || 'Unknown';
 
@@ -485,12 +509,17 @@ function NodeList({ searchQuery, onSearchChange, statusFilter, onStatusFilterCha
       type: node.type || 'unknown',
       status: node.status || 'active',
       description: node.description || 'No description available',
-      features: node.features || [],
+      address: node.address || '',
       coordinates: { lat: node.latitude || 0, lng: node.longitude || 0 },
       website: node.website,
       twitter: node.twitter,
+      instagram: node.instagram,
+      phone: node.phone,
       email: node.contact_email,
-      image: !!node.image,
+      logo: node.logo,
+      image: node.image,
+      opening_hours: node.opening_hours,
+      zoneCount: node.zone_count || 0,
       completeness,
       usersInCity: userCountsByCity?.[city] || 0,
       updated: node.updated_at ? new Date(node.updated_at).toLocaleDateString() : 'Unknown',
@@ -626,16 +655,21 @@ function NodeList({ searchQuery, onSearchChange, statusFilter, onStatusFilterCha
                   id: node.id,
                   name: node.name,
                   type: node.type,
+                  status: node.status,
                   description: node.description,
                   city: node.city,
                   country: node.country,
+                  address: node.address,
                   latitude: node.coordinates.lat,
                   longitude: node.coordinates.lng,
                   website: node.website,
                   twitter: node.twitter,
+                  instagram: node.instagram,
+                  phone: node.phone,
                   contact_email: node.email,
-                  features: node.features,
-                  status: node.status,
+                  logo: node.logo,
+                  image: node.image,
+                  opening_hours: node.opening_hours,
                 })}
                 onDelete={() => onDeleteNode(node.id)}
               />
@@ -656,12 +690,17 @@ interface NodeCardProps {
     type: string;
     status: string;
     description: string;
-    features: string[];
+    address: string;
     coordinates: { lat: number; lng: number };
     website: string | null;
     twitter: string | null;
+    instagram: string | null;
+    phone: string | null;
     email: string | null;
-    image: boolean;
+    logo: string | null;
+    image: string | null;
+    opening_hours: OpeningHours | null;
+    zoneCount: number;
     completeness: number;
     usersInCity: number;
     updated: string;
@@ -680,7 +719,7 @@ function NodeCard({ node, onEdit, onDelete }: NodeCardProps) {
   };
 
   // Get type info from the nodeTypeInfo map
-  const typeConfig = nodeTypeInfo[node.type] || { label: node.type, color: 'text-[#9f9fa9]', bgColor: 'bg-[#9f9fa9]' };
+  const typeConfig = nodeTypeInfo[node.type] || { label: node.type, icon: '📍', color: 'text-[#9f9fa9]', bgColor: 'bg-[#9f9fa9]' };
   const typeColorClass = `${typeConfig.bgColor}/10 ${typeConfig.color}`;
 
   return (
@@ -689,10 +728,13 @@ function NodeCard({ node, onEdit, onDelete }: NodeCardProps) {
       <div className="p-4 border-b border-[#27272a]">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="flex-1">
-            <h4 className="text-lg mb-1">{node.name}</h4>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl">{typeConfig.icon}</span>
+              <h4 className="text-lg">{node.name}</h4>
+            </div>
             <p className="text-xs text-[#71717b] flex items-center gap-1">
               <MapPin className="w-3 h-3" />
-              {node.city}, {node.country}
+              {node.address ? `${node.address}, ` : ''}{node.city}, {node.country}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -742,12 +784,16 @@ function NodeCard({ node, onEdit, onDelete }: NodeCardProps) {
             </div>
           </div>
         </div>
-        <p className="text-sm text-[#9f9fa9] mb-3">{node.description}</p>
+        <p className="text-sm text-[#9f9fa9] mb-3 line-clamp-2">{node.description}</p>
         
-        {/* Type & Completeness */}
-        <div className="flex items-center gap-2">
+        {/* Type, Zones & Completeness */}
+        <div className="flex items-center gap-2 flex-wrap">
           <span className={`px-2 py-1 rounded text-xs ${typeColorClass}`}>
             {typeConfig.label}
+          </span>
+          <span className="px-2 py-1 bg-[#18181b] rounded text-xs text-[#9f9fa9] flex items-center gap-1">
+            <Layers className="w-3 h-3" />
+            {node.zoneCount} zones
           </span>
           <div className="flex items-center gap-1.5 text-xs text-[#9f9fa9]">
             <div className="w-16 h-1.5 bg-[#27272a] rounded-full overflow-hidden">
@@ -761,19 +807,7 @@ function NodeCard({ node, onEdit, onDelete }: NodeCardProps) {
         </div>
       </div>
 
-      {/* Features */}
-      <div className="p-4 border-b border-[#27272a]">
-        <div className="text-xs text-[#9f9fa9] mb-2">Features ({node.features.length})</div>
-        <div className="flex flex-wrap gap-1.5">
-          {node.features.map((feature) => (
-            <span key={feature} className="px-2 py-1 bg-[#18181b] rounded text-xs text-[#9f9fa9]">
-              {feature.replace('_', ' ')}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Links & Stats */}
+      {/* Stats */}
       <div className="p-4 border-b border-[#27272a]">
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
@@ -788,40 +822,43 @@ function NodeCard({ node, onEdit, onDelete }: NodeCardProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs">
+        {/* Contact Info */}
+        <div className="flex items-center gap-3 text-xs flex-wrap">
           {node.website ? (
-            <span className="flex items-center gap-1 text-[#9ae600]">
+            <a href={node.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#9ae600] hover:underline">
               <Globe className="w-3 h-3" />
               Website
-            </span>
+            </a>
           ) : (
             <span className="flex items-center gap-1 text-[#71717b]">
               <Globe className="w-3 h-3" />
               No website
             </span>
           )}
-          {node.twitter ? (
+          {node.phone ? (
             <span className="flex items-center gap-1 text-[#9ae600]">
-              <Twitter className="w-3 h-3" />
-              Twitter
+              <Phone className="w-3 h-3" />
+              Phone
             </span>
-          ) : (
-            <span className="flex items-center gap-1 text-[#71717b]">
-              <Twitter className="w-3 h-3" />
-              No twitter
-            </span>
-          )}
+          ) : null}
           {node.email ? (
             <span className="flex items-center gap-1 text-[#9ae600]">
               <Mail className="w-3 h-3" />
               Email
             </span>
-          ) : (
-            <span className="flex items-center gap-1 text-[#71717b]">
-              <Mail className="w-3 h-3" />
-              No email
+          ) : null}
+          {node.instagram ? (
+            <span className="flex items-center gap-1 text-[#9ae600]">
+              <Instagram className="w-3 h-3" />
+              IG
             </span>
-          )}
+          ) : null}
+          {node.twitter ? (
+            <span className="flex items-center gap-1 text-[#9ae600]">
+              <Twitter className="w-3 h-3" />
+              Twitter
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -1280,10 +1317,11 @@ interface CityRowProps {
   city: string;
   country: string;
   nodes: number;
+  zones?: number;
   types: string[];
 }
 
-function CityRow({ city, country, nodes, types }: CityRowProps) {
+function CityRow({ city, country, nodes, zones, types }: CityRowProps) {
   return (
     <div className="flex items-center justify-between p-3 bg-[#18181b] rounded hover:bg-[#27272a] transition-colors">
       <div>
@@ -1292,7 +1330,31 @@ function CityRow({ city, country, nodes, types }: CityRowProps) {
       </div>
       <div className="text-right">
         <div className="text-sm text-[#9ae600]">{nodes} nodes</div>
-        <div className="text-xs text-[#9f9fa9]">{types.length} types</div>
+        <div className="text-xs text-[#9f9fa9]">
+          {zones !== undefined ? `${zones} zones • ` : ''}{types.length} types
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ZoneTypeBarProps {
+  label: string;
+  count: number;
+  total: number;
+  percentage: number;
+  color: string;
+}
+
+function ZoneTypeBar({ label, count, total, percentage, color }: ZoneTypeBarProps) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm">{label}</span>
+        <span className="text-sm text-[#9f9fa9]">{count} zones ({percentage}%)</span>
+      </div>
+      <div className="w-full bg-[#18181b] rounded-full h-2">
+        <div className={`h-2 rounded-full ${color}`} style={{ width: `${percentage}%` }} />
       </div>
     </div>
   );
@@ -1346,13 +1408,15 @@ function AlertItem({ type, message, action }: AlertItemProps) {
 
 interface UpdateRowProps {
   node: string;
+  icon?: string;
   city: string;
+  zoneCount?: number;
   action: string;
   time: string;
   type: 'success' | 'info';
 }
 
-function UpdateRow({ node, city, action, time, type }: UpdateRowProps) {
+function UpdateRow({ node, icon, city, zoneCount, action, time, type }: UpdateRowProps) {
   const icons = {
     success: <Check className="w-4 h-4 text-[#9ae600]" />,
     info: <Edit className="w-4 h-4 text-[#06b6d4]" />,
@@ -1361,9 +1425,14 @@ function UpdateRow({ node, city, action, time, type }: UpdateRowProps) {
   return (
     <div className="p-4 hover:bg-[#18181b] transition-colors">
       <div className="flex items-start gap-3">
-        <div className="p-2 bg-[#27272a] rounded">{icons[type]}</div>
+        <div className="p-2 bg-[#27272a] rounded text-lg">{icon || icons[type]}</div>
         <div className="flex-1">
-          <div className="text-sm mb-1">{node} • <span className="text-[#9f9fa9]">{city}</span></div>
+          <div className="text-sm mb-1">
+            {node} • <span className="text-[#9f9fa9]">{city}</span>
+            {zoneCount !== undefined && zoneCount > 0 && (
+              <span className="text-[#06b6d4] ml-2">({zoneCount} zones)</span>
+            )}
+          </div>
           <div className="text-xs text-[#9f9fa9] mb-1">{action}</div>
           <div className="text-xs text-[#71717b]">{time}</div>
         </div>
@@ -1523,51 +1592,105 @@ function NodeModal({ node, onClose }: NodeModalProps) {
   const createNode = useCreateNode();
   const updateNode = useUpdateNode();
 
+  // Steps for wizard
+  const steps = isEditing 
+    ? ['basic', 'location', 'contact', 'media', 'hours', 'zones'] as const
+    : ['basic', 'location', 'contact', 'media', 'hours'] as const;
+  
+  const [currentStep, setCurrentStep] = useState(0);
+
   const [formData, setFormData] = useState<NodeInput>({
+    id: node?.id || '',
     name: node?.name || '',
-    type: node?.type || 'staynode',
+    type: node?.type || 'zo_house',
+    status: node?.status || 'active',
     description: node?.description || '',
     city: node?.city || '',
     country: node?.country || '',
+    address: node?.address || '',
     latitude: node?.latitude || undefined,
     longitude: node?.longitude || undefined,
     website: node?.website || '',
     twitter: node?.twitter || '',
+    instagram: node?.instagram || '',
+    phone: node?.phone || '',
     contact_email: node?.contact_email || '',
-    features: node?.features || [],
-    status: node?.status || 'active',
+    logo: node?.logo || '',
+    image: node?.image || '',
+    opening_hours: node?.opening_hours || {},
   });
 
-  const [featureInput, setFeatureInput] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (field: keyof NodeInput, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAddFeature = () => {
-    if (featureInput.trim() && !formData.features?.includes(featureInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...(prev.features || []), featureInput.trim()],
-      }));
-      setFeatureInput('');
-    }
-  };
-
-  const handleRemoveFeature = (feature: string) => {
+  const handleHoursChange = (day: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      features: (prev.features || []).filter(f => f !== feature),
+      opening_hours: {
+        ...(prev.opening_hours || {}),
+        [day]: value,
+      },
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateStep = (step: string): boolean => {
+    setError(null);
+    
+    if (step === 'basic') {
+      if (!formData.name?.trim()) {
+        setError('Node name is required');
+        return false;
+      }
+      if (!formData.id?.trim() && !isEditing) {
+        setError('Node ID is required');
+        return false;
+      }
+    }
+    
+    if (step === 'location') {
+      if (!formData.city?.trim()) {
+        setError('City is required');
+        return false;
+      }
+      if (!formData.country?.trim()) {
+        setError('Country is required');
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const handleNext = () => {
+    if (validateStep(steps[currentStep])) {
+      if (currentStep < steps.length - 1) {
+        setCurrentStep(currentStep + 1);
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSubmit = async () => {
     setError(null);
 
+    // Validate all required fields
     if (!formData.name?.trim()) {
       setError('Node name is required');
+      setCurrentStep(0);
+      return;
+    }
+
+    if (!formData.id?.trim() && !isEditing) {
+      setError('Node ID is required');
+      setCurrentStep(0);
       return;
     }
 
@@ -1584,16 +1707,27 @@ function NodeModal({ node, onClose }: NodeModalProps) {
   };
 
   const isLoading = createNode.isPending || updateNode.isPending;
+  const isLastStep = currentStep === steps.length - 1;
+  const activeTab = steps[currentStep];
+
+  const stepInfo = [
+    { id: 'basic', label: 'Basic Info', icon: <Home className="w-4 h-4" /> },
+    { id: 'location', label: 'Location', icon: <MapPin className="w-4 h-4" /> },
+    { id: 'contact', label: 'Contact', icon: <Mail className="w-4 h-4" /> },
+    { id: 'media', label: 'Media', icon: <Target className="w-4 h-4" /> },
+    { id: 'hours', label: 'Hours', icon: <Clock className="w-4 h-4" /> },
+    { id: 'zones', label: 'Zones', icon: <Layers className="w-4 h-4" /> },
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#09090b] border border-[#27272a] rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#09090b] border border-[#27272a] rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-[#27272a] flex items-center justify-between sticky top-0 bg-[#09090b]">
+        <div className="p-4 border-b border-[#27272a] flex items-center justify-between">
           <div>
             <h2 className="text-lg">{isEditing ? 'Edit Node' : 'Create New Node'}</h2>
             <p className="text-xs text-[#9f9fa9] mt-1">
-              {isEditing ? 'Update node information' : 'Add a new node to the Zo World network'}
+              {isEditing ? `Editing ${node?.name}` : 'Add a new node to the Zo World network'}
             </p>
           </div>
           <button 
@@ -1604,40 +1738,862 @@ function NodeModal({ node, onClose }: NodeModalProps) {
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        {/* Step Progress */}
+        <div className="px-4 py-3 border-b border-[#27272a]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-[#9f9fa9]">Step {currentStep + 1} of {steps.length}</span>
+            <span className="text-sm text-[#9ae600]">{stepInfo.find(s => s.id === activeTab)?.label}</span>
+          </div>
+          <div className="flex gap-1">
+            {steps.map((step, index) => (
+              <button
+                key={step}
+                onClick={() => {
+                  // Allow clicking on previous steps or current step
+                  if (index <= currentStep) {
+                    setCurrentStep(index);
+                  }
+                }}
+                className={`flex-1 h-1.5 rounded-full transition-colors ${
+                  index < currentStep 
+                    ? 'bg-[#9ae600]' 
+                    : index === currentStep 
+                      ? 'bg-[#9ae600]' 
+                      : 'bg-[#27272a]'
+                } ${index <= currentStep ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {error && (
             <div className="p-3 bg-red-900/20 border border-red-500/30 rounded text-sm text-red-400">
               {error}
             </div>
           )}
 
-          {/* Basic Info */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">Node Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                placeholder="e.g. Zo House Bangalore"
-                className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
-              />
+          {/* Basic Info Tab */}
+          {activeTab === 'basic' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Node ID *</label>
+                  <input
+                    type="text"
+                    value={formData.id}
+                    onChange={(e) => handleChange('id', e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                    placeholder="e.g. blrxzo"
+                    disabled={isEditing}
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600] disabled:opacity-50"
+                  />
+                  <p className="text-xs text-[#71717b] mt-1">Unique identifier, lowercase, no spaces</p>
+                </div>
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                    placeholder="e.g. BLRxZo"
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Type *</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => handleChange('type', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  >
+                    {NODE_TYPES.map((type) => {
+                      const info = nodeTypeInfo[type];
+                      return (
+                        <option key={type} value={type}>
+                          {info?.icon} {info?.label || type}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Status *</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => handleChange('status', e.target.value)}
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  >
+                    {NODE_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#9f9fa9] mb-1.5">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleChange('description', e.target.value)}
+                  placeholder="Brief description of the node..."
+                  rows={4}
+                  className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600] resize-none"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">Node Type</label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+          )}
+
+          {/* Location Tab */}
+          {activeTab === 'location' && (
+            <LocationStep 
+              formData={formData}
+              onChange={handleChange}
+            />
+          )}
+
+          {/* Contact Tab */}
+          {activeTab === 'contact' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Website</label>
+                  <input
+                    type="url"
+                    value={formData.website}
+                    onChange={(e) => handleChange('website', e.target.value)}
+                    placeholder="https://zo.xyz"
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    value={formData.contact_email}
+                    onChange={(e) => handleChange('contact_email', e.target.value)}
+                    placeholder="hello@zo.xyz"
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleChange('phone', e.target.value)}
+                    placeholder="+91 80 4567 8900"
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[#9f9fa9] mb-1.5">Instagram</label>
+                  <input
+                    type="text"
+                    value={formData.instagram}
+                    onChange={(e) => handleChange('instagram', e.target.value)}
+                    placeholder="@zo.house"
+                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#9f9fa9] mb-1.5">Twitter</label>
+                <input
+                  type="text"
+                  value={formData.twitter}
+                  onChange={(e) => handleChange('twitter', e.target.value)}
+                  placeholder="@zo_house"
+                  className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Media Tab */}
+          {activeTab === 'media' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-[#9f9fa9] mb-1.5">Logo URL</label>
+                <input
+                  type="url"
+                  value={formData.logo}
+                  onChange={(e) => handleChange('logo', e.target.value)}
+                  placeholder="/logos/zo-house.svg or https://..."
+                  className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                />
+                {formData.logo && (
+                  <div className="mt-2 p-2 bg-[#18181b] border border-[#27272a] rounded">
+                    <img src={formData.logo} alt="Logo preview" className="h-12 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#9f9fa9] mb-1.5">Cover Image URL</label>
+                <input
+                  type="url"
+                  value={formData.image}
+                  onChange={(e) => handleChange('image', e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                />
+                {formData.image && (
+                  <div className="mt-2 p-2 bg-[#18181b] border border-[#27272a] rounded">
+                    <img src={formData.image} alt="Cover preview" className="w-full h-32 object-cover rounded" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Hours Tab */}
+          {activeTab === 'hours' && (
+            <div className="space-y-3">
+              <p className="text-xs text-[#71717b] mb-4">Set opening hours for each day. Leave empty if closed.</p>
+              {DAYS_OF_WEEK.map((day) => (
+                <div key={day} className="flex items-center gap-3">
+                  <span className="w-24 text-sm capitalize">{day}</span>
+                  <input
+                    type="text"
+                    value={formData.opening_hours?.[day] || ''}
+                    onChange={(e) => handleHoursChange(day, e.target.value)}
+                    placeholder="09:00-22:00"
+                    className="flex-1 px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Zones Tab (only for editing) */}
+          {activeTab === 'zones' && isEditing && node?.id && (
+            <ZoneManager nodeId={node.id} />
+          )}
+        </div>
+
+        {/* Actions - Wizard Navigation */}
+        <div className="p-4 border-t border-[#27272a] flex gap-3">
+          {currentStep === 0 ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm hover:bg-[#27272a] transition-colors"
+            >
+              Cancel
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex-1 px-4 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm hover:bg-[#27272a] transition-colors flex items-center justify-center gap-2"
+            >
+              <ChevronDown className="w-4 h-4 rotate-90" />
+              Back
+            </button>
+          )}
+          
+          {isLastStep ? (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-[#9ae600] text-black rounded text-sm hover:bg-[#8bd500] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isEditing ? 'Update Node' : 'Create Node'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="flex-1 px-4 py-2 bg-[#9ae600] text-black rounded text-sm hover:bg-[#8bd500] transition-colors flex items-center justify-center gap-2"
+            >
+              Next
+              <ChevronDown className="w-4 h-4 -rotate-90" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================
+// ZONE MANAGER COMPONENT
+// ===========================================
+
+interface ZoneManagerProps {
+  nodeId: string;
+}
+
+function ZoneManager({ nodeId }: ZoneManagerProps) {
+  const { data: zones, isLoading } = useNodeZones(nodeId);
+  const createZone = useCreateZone();
+  const updateZone = useUpdateZone();
+  const deleteZone = useDeleteZone();
+
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [editingZone, setEditingZone] = useState<ZoneInput | null>(null);
+
+  const handleAddZone = () => {
+    setEditingZone(null);
+    setShowZoneModal(true);
+  };
+
+  const handleEditZone = (zone: any) => {
+    setEditingZone({
+      id: zone.id,
+      node_id: zone.node_id,
+      zone_type: zone.zone_type,
+      name: zone.name,
+      description: zone.description,
+      capacity: zone.capacity,
+      floor: zone.floor,
+      is_available: zone.is_available,
+      availability_notes: zone.availability_notes,
+    });
+    setShowZoneModal(true);
+  };
+
+  const handleDeleteZone = async (zoneId: string) => {
+    if (confirm('Are you sure you want to delete this zone?')) {
+      await deleteZone.mutateAsync({ zoneId, nodeId });
+    }
+  };
+
+  const handleSaveZone = async (zoneData: ZoneInput) => {
+    if (zoneData.id) {
+      await updateZone.mutateAsync({ ...zoneData, id: zoneData.id });
+    } else {
+      await createZone.mutateAsync({ ...zoneData, node_id: nodeId });
+    }
+    setShowZoneModal(false);
+    setEditingZone(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="w-6 h-6 animate-spin text-[#9ae600]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium">Zones ({zones?.length || 0})</h3>
+          <p className="text-xs text-[#71717b]">Manage zones within this node</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleAddZone}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9ae600] text-black rounded text-sm hover:bg-[#8bd500] transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Zone
+        </button>
+      </div>
+
+      {/* Zone List */}
+      <div className="space-y-2">
+        {zones && zones.length > 0 ? (
+          zones.map((zone: any) => {
+            const zoneInfo = zoneTypeInfo[zone.zone_type] || { label: zone.zone_type, color: 'text-[#9f9fa9]', bgColor: 'bg-[#9f9fa9]' };
+            return (
+              <div
+                key={zone.id}
+                className="flex items-center justify-between p-3 bg-[#18181b] border border-[#27272a] rounded hover:border-[#9ae600]/50 transition-colors"
               >
-                {NODE_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {nodeTypeInfo[type]?.label || type}
-                  </option>
-                ))}
-              </select>
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${zone.is_available ? 'bg-[#9ae600]' : 'bg-[#71717b]'}`} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded text-xs ${zoneInfo.bgColor}/20 ${zoneInfo.color}`}>
+                        {zoneInfo.label}
+                      </span>
+                      {zone.name && <span className="text-sm">{zone.name}</span>}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-[#71717b] mt-1">
+                      {zone.capacity && <span>Capacity: {zone.capacity}</span>}
+                      {zone.floor && <span>Floor: {zone.floor}</span>}
+                      {!zone.is_available && <span className="text-[#f0b100]">Unavailable</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleEditZone(zone)}
+                    className="p-1.5 hover:bg-[#27272a] rounded transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteZone(zone.id)}
+                    className="p-1.5 hover:bg-red-900/30 text-[#9f9fa9] hover:text-red-400 rounded transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-8 text-[#71717b]">
+            <Layers className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>No zones added yet</p>
+            <p className="text-xs mt-1">Click "Add Zone" to create one</p>
+          </div>
+        )}
+      </div>
+
+      {/* Zone Modal */}
+      {showZoneModal && (
+        <ZoneModal
+          zone={editingZone}
+          nodeId={nodeId}
+          onClose={() => { setShowZoneModal(false); setEditingZone(null); }}
+          onSave={handleSaveZone}
+        />
+      )}
+    </div>
+  );
+}
+
+// ===========================================
+// ZONE ADD/EDIT MODAL
+// ===========================================
+
+interface ZoneModalProps {
+  zone: ZoneInput | null;
+  nodeId: string;
+  onClose: () => void;
+  onSave: (zone: ZoneInput) => Promise<void>;
+}
+
+// ===========================================
+// LOCATION AUTOCOMPLETE INPUT
+// ===========================================
+
+interface LocationAutocompleteProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onSelect: (result: GeocodingResult) => void;
+  placeholder: string;
+  searchType: 'country' | 'city' | 'address';
+  countryFilter?: string;
+  required?: boolean;
+}
+
+interface GeocodingResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address: {
+    road?: string;
+    house_number?: string;
+    suburb?: string;
+    neighbourhood?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    state?: string;
+    country?: string;
+    postcode?: string;
+  };
+}
+
+function LocationAutocomplete({ 
+  label, 
+  value, 
+  onChange, 
+  onSelect, 
+  placeholder, 
+  searchType,
+  countryFilter,
+  required 
+}: LocationAutocompleteProps) {
+  const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleInputChange = (query: string) => {
+    onChange(query);
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (query.length < 2) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        // Build search query based on type
+        let searchQuery = query;
+        let extraParams = '';
+        
+        if (searchType === 'country') {
+          extraParams = '&featuretype=country';
+        } else if (searchType === 'city') {
+          extraParams = '&featuretype=city';
+          if (countryFilter) {
+            searchQuery = `${query}, ${countryFilter}`;
+          }
+        } else if (searchType === 'address') {
+          if (countryFilter) {
+            searchQuery = `${query}, ${countryFilter}`;
+          }
+        }
+
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(searchQuery)}${extraParams}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+            },
+          }
+        );
+        const data = await response.json();
+        setSearchResults(data);
+        setShowResults(true);
+      } catch (error) {
+        console.error('Geocoding error:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  };
+
+  const handleSelect = (result: GeocodingResult) => {
+    onSelect(result);
+    setSearchResults([]);
+    setShowResults(false);
+  };
+
+  const getDisplayValue = (result: GeocodingResult): string => {
+    const addr = result.address;
+    if (searchType === 'country') {
+      return addr.country || result.display_name;
+    } else if (searchType === 'city') {
+      return addr.city || addr.town || addr.village || result.display_name.split(',')[0];
+    } else {
+      return result.display_name;
+    }
+  };
+
+  return (
+    <div className="relative">
+      <label className="block text-xs text-[#9f9fa9] mb-1.5">
+        {label} {required && '*'}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => {
+            setIsFocused(true);
+            if (searchResults.length > 0) setShowResults(true);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            // Delay hiding results to allow click
+            setTimeout(() => setShowResults(false), 200);
+          }}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600] pr-8"
+        />
+        {isSearching ? (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[#9ae600]" />
+        ) : (
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71717b]" />
+        )}
+      </div>
+      
+      {/* Dropdown Results */}
+      {showResults && searchResults.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-[#18181b] border border-[#27272a] rounded-lg shadow-xl z-30 max-h-48 overflow-y-auto">
+          {searchResults.map((result) => (
+            <button
+              key={result.place_id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(result)}
+              className="w-full flex items-start gap-2 px-3 py-2 hover:bg-[#27272a] transition-colors text-left border-b border-[#27272a] last:border-b-0"
+            >
+              <MapPin className="w-3.5 h-3.5 text-[#9ae600] mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm">{getDisplayValue(result)}</div>
+                <div className="text-xs text-[#71717b] truncate">
+                  {result.display_name}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===========================================
+// LOCATION STEP
+// ===========================================
+
+interface LocationStepProps {
+  formData: NodeInput;
+  onChange: (field: keyof NodeInput, value: any) => void;
+}
+
+function LocationStep({ formData, onChange }: LocationStepProps) {
+  
+  const handleCountrySelect = (result: GeocodingResult) => {
+    const country = result.address.country || '';
+    onChange('country', country);
+    // Clear city and address when country changes
+    onChange('city', '');
+    onChange('address', '');
+    onChange('latitude', undefined);
+    onChange('longitude', undefined);
+  };
+
+  const handleCitySelect = (result: GeocodingResult) => {
+    const addr = result.address;
+    const city = addr.city || addr.town || addr.village || '';
+    onChange('city', city);
+    
+    // Also set country if not already set
+    if (!formData.country && addr.country) {
+      onChange('country', addr.country);
+    }
+    
+    // Clear address when city changes
+    onChange('address', '');
+    onChange('latitude', undefined);
+    onChange('longitude', undefined);
+  };
+
+  const handleAddressSelect = (result: GeocodingResult) => {
+    const addr = result.address;
+    
+    // Build address string
+    const addressParts = [];
+    if (addr.house_number) addressParts.push(addr.house_number);
+    if (addr.road) addressParts.push(addr.road);
+    if (addr.suburb || addr.neighbourhood) addressParts.push(addr.suburb || addr.neighbourhood);
+    
+    const address = addressParts.join(', ') || result.display_name.split(',')[0];
+    
+    onChange('address', address);
+    
+    // Set coordinates only when address is selected
+    onChange('latitude', parseFloat(result.lat));
+    onChange('longitude', parseFloat(result.lon));
+  };
+
+  // Build filter string for address search
+  const addressFilter = [formData.city, formData.country].filter(Boolean).join(', ');
+
+  return (
+    <div className="space-y-4">
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 text-xs text-[#71717b] mb-2">
+        <span className={formData.country ? 'text-[#9ae600]' : ''}>1. Country</span>
+        <span>→</span>
+        <span className={formData.city ? 'text-[#9ae600]' : ''}>2. City</span>
+        <span>→</span>
+        <span className={formData.address ? 'text-[#9ae600]' : ''}>3. Address</span>
+        <span>→</span>
+        <span className={formData.latitude && formData.longitude ? 'text-[#9ae600]' : ''}>4. Coordinates</span>
+      </div>
+
+      {/* Country */}
+      <LocationAutocomplete
+        label="Country"
+        value={formData.country || ''}
+        onChange={(value) => onChange('country', value)}
+        onSelect={handleCountrySelect}
+        placeholder="Start by selecting a country..."
+        searchType="country"
+        required
+      />
+
+      {/* City - enabled after country is selected */}
+      <div className={!formData.country ? 'opacity-50 pointer-events-none' : ''}>
+        <LocationAutocomplete
+          label="City"
+          value={formData.city || ''}
+          onChange={(value) => onChange('city', value)}
+          onSelect={handleCitySelect}
+          placeholder={formData.country ? `Search for a city in ${formData.country}...` : 'Select a country first...'}
+          searchType="city"
+          countryFilter={formData.country}
+          required
+        />
+      </div>
+
+      {/* Address - enabled after city is selected */}
+      <div className={!formData.city ? 'opacity-50 pointer-events-none' : ''}>
+        <LocationAutocomplete
+          label="Address"
+          value={formData.address || ''}
+          onChange={(value) => onChange('address', value)}
+          onSelect={handleAddressSelect}
+          placeholder={formData.city ? `Search for an address in ${formData.city}...` : 'Select a city first...'}
+          searchType="address"
+          countryFilter={addressFilter}
+        />
+      </div>
+
+      {/* Coordinates - auto-filled and read-only display */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-[#9f9fa9] mb-1.5">Latitude *</label>
+          <input
+            type="number"
+            step="any"
+            value={formData.latitude || ''}
+            onChange={(e) => onChange('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
+            placeholder="Auto-filled when address is selected"
+            className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-[#9f9fa9] mb-1.5">Longitude *</label>
+          <input
+            type="number"
+            step="any"
+            value={formData.longitude || ''}
+            onChange={(e) => onChange('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
+            placeholder="Auto-filled when address is selected"
+            className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+          />
+        </div>
+      </div>
+
+      {/* Location Preview */}
+      {formData.latitude && formData.longitude && (
+        <div className="p-3 bg-[#18181b] border border-[#9ae600]/30 rounded">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-[#9ae600] flex items-center gap-2">
+                <Check className="w-4 h-4" />
+                Location Set
+              </div>
+              <div className="text-xs text-[#9f9fa9] mt-1">
+                {formData.address && `${formData.address}, `}
+                {formData.city}{formData.city && formData.country && ', '}{formData.country}
+              </div>
+              <div className="text-xs text-[#71717b] mt-0.5">
+                {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+              </div>
             </div>
+            <a
+              href={`https://www.google.com/maps?q=${formData.latitude},${formData.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 bg-[#27272a] hover:bg-[#3f3f46] rounded text-xs transition-colors flex items-center gap-1.5"
+            >
+              <ExternalLink className="w-3 h-3" />
+              View on Map
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ZoneModal({ zone, nodeId, onClose, onSave }: ZoneModalProps) {
+  const isEditing = !!zone?.id;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState<ZoneInput>({
+    node_id: nodeId,
+    zone_type: zone?.zone_type || 'schelling_point',
+    name: zone?.name || '',
+    description: zone?.description || '',
+    capacity: zone?.capacity || undefined,
+    floor: zone?.floor || '',
+    is_available: zone?.is_available ?? true,
+    availability_notes: zone?.availability_notes || '',
+  });
+
+  const handleChange = (field: keyof ZoneInput, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await onSave({ ...formData, id: zone?.id });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+      <div className="bg-[#09090b] border border-[#27272a] rounded-lg w-full max-w-md">
+        <div className="p-4 border-b border-[#27272a] flex items-center justify-between">
+          <h3 className="text-lg">{isEditing ? 'Edit Zone' : 'Add Zone'}</h3>
+          <button onClick={onClose} className="p-2 hover:bg-[#27272a] rounded transition-colors">
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="block text-xs text-[#9f9fa9] mb-1.5">Zone Type *</label>
+            <select
+              value={formData.zone_type}
+              onChange={(e) => handleChange('zone_type', e.target.value)}
+              className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+            >
+              {ZONE_TYPES.map((type) => {
+                const info = zoneTypeInfo[type];
+                return (
+                  <option key={type} value={type}>
+                    {info?.label || type}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-[#9f9fa9] mb-1.5">Custom Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => handleChange('name', e.target.value)}
+              placeholder="e.g. The Schelling Point"
+              className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+            />
           </div>
 
           <div>
@@ -1645,187 +2601,61 @@ function NodeModal({ node, onClose }: NodeModalProps) {
             <textarea
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
-              placeholder="Brief description of the node..."
-              rows={3}
+              placeholder="Zone description..."
+              rows={2}
               className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600] resize-none"
             />
           </div>
 
-          {/* Location */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">City</label>
-              <input
-                type="text"
-                value={formData.city}
-                onChange={(e) => handleChange('city', e.target.value)}
-                placeholder="e.g. Bangalore"
-                className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">Country</label>
-              <input
-                type="text"
-                value={formData.country}
-                onChange={(e) => handleChange('country', e.target.value)}
-                placeholder="e.g. India"
-                className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">Latitude</label>
+              <label className="block text-xs text-[#9f9fa9] mb-1.5">Capacity</label>
               <input
                 type="number"
-                step="any"
-                value={formData.latitude || ''}
-                onChange={(e) => handleChange('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                placeholder="e.g. 12.9716"
+                value={formData.capacity || ''}
+                onChange={(e) => handleChange('capacity', e.target.value ? parseInt(e.target.value) : undefined)}
+                placeholder="e.g. 100"
                 className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
               />
             </div>
             <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">Longitude</label>
-              <input
-                type="number"
-                step="any"
-                value={formData.longitude || ''}
-                onChange={(e) => handleChange('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                placeholder="e.g. 77.5946"
-                className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
-              />
-            </div>
-          </div>
-
-          {/* Contact & Links */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">Website</label>
-              <input
-                type="url"
-                value={formData.website}
-                onChange={(e) => handleChange('website', e.target.value)}
-                placeholder="https://..."
-                className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[#9f9fa9] mb-1.5">Twitter</label>
+              <label className="block text-xs text-[#9f9fa9] mb-1.5">Floor</label>
               <input
                 type="text"
-                value={formData.twitter}
-                onChange={(e) => handleChange('twitter', e.target.value)}
-                placeholder="@handle"
+                value={formData.floor}
+                onChange={(e) => handleChange('floor', e.target.value)}
+                placeholder="e.g. Ground Floor"
                 className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs text-[#9f9fa9] mb-1.5">Contact Email</label>
-            <input
-              type="email"
-              value={formData.contact_email}
-              onChange={(e) => handleChange('contact_email', e.target.value)}
-              placeholder="contact@example.com"
-              className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
-            />
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_available}
+                onChange={(e) => handleChange('is_available', e.target.checked)}
+                className="w-4 h-4 rounded border-[#27272a] bg-[#18181b] text-[#9ae600] focus:ring-[#9ae600]"
+              />
+              <span className="text-sm">Available</span>
+            </label>
           </div>
 
-          {/* Status */}
-          <div>
-            <label className="block text-xs text-[#9f9fa9] mb-1.5">Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
-              className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
-            >
-              {NODE_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Features */}
-          <div>
-            <label className="block text-xs text-[#9f9fa9] mb-1.5">Features</label>
-            
-            {/* Selected Features */}
-            {(formData.features || []).length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {(formData.features || []).map((feature) => (
-                  <span 
-                    key={feature}
-                    className="px-2 py-1 bg-[#9ae600]/20 border border-[#9ae600]/30 text-[#9ae600] rounded text-xs flex items-center gap-1.5"
-                  >
-                    {feature}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveFeature(feature)}
-                      className="hover:text-white"
-                    >
-                      <XIcon className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Available Features Grid */}
-            <div className="mb-3">
-              <div className="text-xs text-[#71717b] mb-2">Click to add:</div>
-              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-[#18181b] border border-[#27272a] rounded">
-                {AVAILABLE_FEATURES.filter(f => !(formData.features || []).includes(f)).map((feature) => (
-                  <button
-                    key={feature}
-                    type="button"
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        features: [...(prev.features || []), feature],
-                      }));
-                    }}
-                    className="px-2 py-1 bg-[#27272a] hover:bg-[#9ae600]/20 hover:border-[#9ae600]/30 border border-[#3a3a3a] rounded text-xs text-[#9f9fa9] hover:text-[#9ae600] transition-colors"
-                  >
-                    + {feature}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Feature Input */}
-            <div className="flex gap-2">
+          {!formData.is_available && (
+            <div>
+              <label className="block text-xs text-[#9f9fa9] mb-1.5">Availability Notes</label>
               <input
                 type="text"
-                value={featureInput}
-                onChange={(e) => setFeatureInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddFeature();
-                  }
-                }}
-                placeholder="Or type a custom feature..."
-                className="flex-1 px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
+                value={formData.availability_notes}
+                onChange={(e) => handleChange('availability_notes', e.target.value)}
+                placeholder="e.g. Under renovation"
+                className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600]"
               />
-              <button
-                type="button"
-                onClick={handleAddFeature}
-                disabled={!featureInput.trim()}
-                className="px-4 py-2 bg-[#27272a] hover:bg-[#3f3f46] rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add
-              </button>
             </div>
-          </div>
+          )}
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-[#27272a]">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
@@ -1835,11 +2665,11 @@ function NodeModal({ node, onClose }: NodeModalProps) {
             </button>
             <button
               type="submit"
-              disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-[#9ae600] text-black rounded text-sm hover:bg-[#8bd500] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2 bg-[#9ae600] text-black rounded text-sm hover:bg-[#8bd500] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isEditing ? 'Update Node' : 'Create Node'}
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isEditing ? 'Update Zone' : 'Add Zone'}
             </button>
           </div>
         </form>
