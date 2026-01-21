@@ -260,6 +260,33 @@ export const useNode = (nodeId: string) => {
 };
 
 /**
+ * Check if a node ID already exists
+ * Used for validation when creating new nodes
+ */
+export const useNodeIdExists = (nodeId: string, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: ['node', 'exists', nodeId],
+    queryFn: async () => {
+      if (!nodeId?.trim()) return false;
+      
+      const { data, error } = await supabase
+        .from('nodes')
+        .select('id')
+        .eq('id', nodeId.trim().toLowerCase())
+        .maybeSingle();
+      
+      // If error and it's not a "not found" error, throw it
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      // Return true if data exists, false otherwise
+      return !!data;
+    },
+    enabled: enabled && !!nodeId?.trim(),
+    staleTime: 0, // Always check fresh
+  });
+};
+
+/**
  * Node statistics aggregated - comprehensive data for Overview
  * Updated for new schema with zones
  */

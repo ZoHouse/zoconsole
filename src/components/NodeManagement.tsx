@@ -14,6 +14,7 @@ import {
   useUpdateZone,
   useDeleteZone,
   useNodesWithZoneCounts,
+  useNodeIdExists,
   NodeInput,
   ZoneInput,
   OpeningHours,
@@ -1621,9 +1622,31 @@ function NodeModal({ node, onClose }: NodeModalProps) {
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [nodeIdError, setNodeIdError] = useState<string | null>(null);
+
+  // Check if node ID exists (only when creating, not editing)
+  const normalizedNodeId = formData.id?.trim().toLowerCase() || '';
+  const shouldCheckNodeId = !isEditing && normalizedNodeId.length > 0;
+  const { data: nodeIdExists, isLoading: checkingNodeId } = useNodeIdExists(
+    normalizedNodeId,
+    shouldCheckNodeId
+  );
 
   const handleChange = (field: keyof NodeInput, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear node ID error when user starts typing
+    if (field === 'id' && nodeIdError) {
+      setNodeIdError(null);
+    }
+  };
+
+  // Validate node ID on blur
+  const handleNodeIdBlur = () => {
+    if (!isEditing && normalizedNodeId && nodeIdExists) {
+      setNodeIdError('This Node ID already exists. Please choose a different one.');
+    } else if (nodeIdError && !nodeIdExists) {
+      setNodeIdError(null);
+    }
   };
 
   const handleHoursChange = (day: string, value: string) => {
@@ -1647,6 +1670,18 @@ function NodeModal({ node, onClose }: NodeModalProps) {
       if (!formData.id?.trim() && !isEditing) {
         setError('Node ID is required');
         return false;
+      }
+      // Check if node ID already exists (only when creating)
+      if (!isEditing && normalizedNodeId) {
+        if (checkingNodeId) {
+          setError('Checking if Node ID is available...');
+          return false;
+        }
+        if (nodeIdExists) {
+          setNodeIdError('This Node ID already exists. Please choose a different one.');
+          setError('This Node ID already exists. Please choose a different one.');
+          return false;
+        }
       }
     }
     
@@ -1680,6 +1715,7 @@ function NodeModal({ node, onClose }: NodeModalProps) {
 
   const handleSubmit = async () => {
     setError(null);
+    setNodeIdError(null);
 
     // Validate all required fields
     if (!formData.name?.trim()) {
@@ -1694,15 +1730,40 @@ function NodeModal({ node, onClose }: NodeModalProps) {
       return;
     }
 
+    // Final check: Ensure node ID doesn't exist (only when creating)
+    if (!isEditing && normalizedNodeId) {
+      if (checkingNodeId) {
+        setError('Please wait while we verify the Node ID...');
+        return;
+      }
+      if (nodeIdExists) {
+        setNodeIdError('This Node ID already exists. Please choose a different one.');
+        setError('This Node ID already exists. Please choose a different one.');
+        setCurrentStep(0);
+        return;
+      }
+    }
+
     try {
       if (isEditing && node?.id) {
         await updateNode.mutateAsync({ ...formData, id: node.id });
       } else {
-        await createNode.mutateAsync(formData);
+        // Normalize the ID to lowercase before creating
+        await createNode.mutateAsync({
+          ...formData,
+          id: normalizedNodeId,
+        });
       }
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to save node');
+      // Check if error is about duplicate ID
+      if (err?.message?.includes('duplicate') || err?.code === '23505') {
+        setNodeIdError('This Node ID already exists. Please choose a different one.');
+        setError('This Node ID already exists. Please choose a different one.');
+        setCurrentStep(0);
+      } else {
+        setError(err?.message || 'Failed to save node');
+      }
     }
   };
 
@@ -1780,15 +1841,44 @@ function NodeModal({ node, onClose }: NodeModalProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-[#9f9fa9] mb-1.5">Node ID *</label>
-                  <input
-                    type="text"
-                    value={formData.id}
-                    onChange={(e) => handleChange('id', e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                    placeholder="e.g. blrxzo"
-                    disabled={isEditing}
-                    className="w-full px-3 py-2 bg-[#18181b] border border-[#27272a] rounded text-sm focus:outline-none focus:border-[#9ae600] disabled:opacity-50"
-                  />
-                  <p className="text-xs text-[#71717b] mt-1">Unique identifier, lowercase, no spaces</p>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.id}
+                      onChange={(e) => handleChange('id', e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                      onBlur={handleNodeIdBlur}
+                      placeholder="e.g. blrxzo"
+                      disabled={isEditing}
+                      className={`w-full px-3 py-2 bg-[#18181b] border rounded text-sm focus:outline-none disabled:opacity-50 ${
+                        nodeIdError 
+                          ? 'border-red-500/50 focus:border-red-500' 
+                          : !isEditing && normalizedNodeId && !checkingNodeId && !nodeIdExists
+                          ? 'border-[#9ae600]/50 focus:border-[#9ae600]'
+                          : 'border-[#27272a] focus:border-[#9ae600]'
+                      }`}
+                    />
+                    {!isEditing && checkingNodeId && normalizedNodeId && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#9f9fa9]" />
+                      </div>
+                    )}
+                    {!isEditing && !checkingNodeId && normalizedNodeId && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {nodeIdExists ? (
+                          <XIcon className="w-4 h-4 text-red-500" />
+                        ) : (
+                          <Check className="w-4 h-4 text-[#9ae600]" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {nodeIdError ? (
+                    <p className="text-xs text-red-400 mt-1">{nodeIdError}</p>
+                  ) : !isEditing && normalizedNodeId && !checkingNodeId && !nodeIdExists ? (
+                    <p className="text-xs text-[#9ae600] mt-1">✓ Node ID is available</p>
+                  ) : (
+                    <p className="text-xs text-[#71717b] mt-1">Unique identifier, lowercase, no spaces</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-[#9f9fa9] mb-1.5">Name *</label>
