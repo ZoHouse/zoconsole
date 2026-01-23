@@ -12,7 +12,7 @@ interface Task {
   status: 'active' | 'archived';
 }
 
-interface Template {
+export interface Template {
   id: string;
   name: string;
   description?: string;

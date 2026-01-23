@@ -155,6 +155,21 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
     };
   });
 
+
+
+  // Build selectable templates for Dropdowns (using actual API templates)
+  const selectableTemplates: Template[] = apiTemplates.map(t => ({
+    id: t.id,
+    name: t.name,
+    description: t.use_case,
+    zone: { id: '', name: 'Unassigned', type: 'common', floor: '' }, // Placeholder
+    tasks: [],
+    totalTasks: 0,
+    totalMinutes: 0,
+    photosRequired: 0,
+    status: 'active' as const
+  }));
+
   // Mock playlists (API doesn't provide playlists, so we generate sample ones)
   const playlists: Playlist[] = templates.length > 0 ? [
     {
@@ -916,7 +931,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
 
             // If a template was selected, link the task to it
             if (task.templateId) {
-              const assignedTemplate = templates.find(t => t.id === task.templateId);
+              const assignedTemplate = selectableTemplates.find(t => t.id === task.templateId);
               if (assignedTemplate) {
                 const linkPayload: CreateTemplatePayload = {
                   node_id: selectedProperty?.toLowerCase(),
@@ -955,7 +970,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
             alert('Failed to create task. Please try again.');
           }
         }}
-        templates={templates}
+        templates={selectableTemplates}
       />
 
       {/* Create Template Modal */}

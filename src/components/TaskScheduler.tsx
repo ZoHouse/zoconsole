@@ -1,6 +1,7 @@
 import { Plus, Search, Edit, Trash2, Send, Clock, Camera, ChevronDown, CheckCircle, AlertCircle, Download } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { fetchNodeData, getUniqueZonesFromTasks, type HousekeepingTask, type Zone } from '../services/nodes';
+import { fetchNodeData, getUniqueZonesFromTasks, getUniqueTemplatesFromTasks, createTask, createTemplate, type HousekeepingTask, type Zone, type CreateTaskPayload, type CreateTemplatePayload } from '../services/nodes';
+import { CreateTaskModal, type Template } from './TaskTemplatePlaylistModals';
 
 
 interface TaskSchedulerProps {
@@ -14,9 +15,11 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
   const [selectedZone, setSelectedZone] = useState('all');
   const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
   const [zones, setZones] = useState<{ id: string; name: string; floor: string }[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [activeTasksCount, setActiveTasksCount] = useState(0);
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [pendingTasksCount, setPendingTasksCount] = useState(0);
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
 
   useEffect(() => {
     if (!selectedProperty || selectedProperty === 'all') return;
@@ -27,6 +30,33 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
         // Get unique zones from tasks for filtering
         const uniqueZones = getUniqueZonesFromTasks(nodeData.housekeeping_tasks);
         setZones(uniqueZones);
+
+        // Map housekeeping tasks to Template interface
+        const uniqueTemplatesMap = new Map<string, Template>();
+        if (nodeData.housekeeping_tasks) {
+          nodeData.housekeeping_tasks.forEach(task => {
+            if (task.template_id && !uniqueTemplatesMap.has(task.template_id)) {
+              uniqueTemplatesMap.set(task.template_id, {
+                id: task.template_id,
+                name: task.template_name || 'Unknown',
+                description: task.use_case,
+                zone: {
+                  id: task.zone_id,
+                  name: task.zone_name,
+                  type: 'common', // Default as we might not have it in task view
+                  floor: task.floor
+                },
+                tasks: [], // Placeholder
+                totalTasks: 0,
+                totalMinutes: 0,
+                photosRequired: 0,
+                status: 'active'
+              });
+            }
+          });
+        }
+        setTemplates(Array.from(uniqueTemplatesMap.values()));
+
         // Calculate stats from housekeeping tasks
         const taskCount = nodeData.housekeeping_tasks?.length || 0;
         setActiveTasksCount(taskCount);
@@ -59,7 +89,10 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#9ae600] text-black rounded text-sm hover:bg-[#8bd500] transition-colors whitespace-nowrap">
+            <button
+              onClick={() => setShowCreateTaskModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#9ae600] text-black rounded text-sm hover:bg-[#8bd500] transition-colors whitespace-nowrap"
+            >
               <Plus className="w-4 h-4" />
               <span>Add Task</span>
             </button>
@@ -139,6 +172,88 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
             <TasksTable tasks={filteredTasks} />
           </div>
         </div>
+
+        {/* Create Task Modal */}
+        <CreateTaskModal
+          isOpen={showCreateTaskModal}
+          onClose={() => setShowCreateTaskModal(false)}
+          onSave={async (task) => {
+            try {
+              // Generate a unique task_id
+              const taskId = `T${Date.now().toString(36).toUpperCase()}`;
+              const payload: CreateTaskPayload = {
+                node_id: selectedProperty?.toLowerCase(),
+                task_id: taskId,
+                task_name: task.name || '',
+                task_description: task.description,
+                photo_required: task.requiresPhoto ? 'yes' : 'no',
+                estimated_time: `${task.estimatedMinutes}m`,
+                category: 'general'
+              };
+              const response = await createTask(payload);
+              console.log('Task created successfully:', payload);
+
+              // If a template was selected, link the task to it
+              if (task.templateId) {
+                const assignedTemplate = templates.find(t => t.id === task.templateId);
+                if (assignedTemplate) {
+                  const linkPayload: CreateTemplatePayload = {
+                    node_id: selectedProperty?.toLowerCase(),
+                    template_id: assignedTemplate.id,
+                    template_name: assignedTemplate.name,
+                    task_id: response.task_id, // Use the ID returned from API
+                    task_name: payload.task_name,
+                    total_est_time: payload.estimated_time
+                  };
+                  await createTemplate(linkPayload);
+                  console.log('Linked task to template:', linkPayload);
+                }
+              }
+
+              // Refresh data
+              if (selectedProperty && selectedProperty !== 'all') {
+                const nodeData = await fetchNodeData(selectedProperty);
+                setTasks(nodeData.housekeeping_tasks);
+                setZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks));
+
+                // Map housekeeping tasks to Template interface
+                const uniqueTemplatesMap = new Map<string, Template>();
+                if (nodeData.housekeeping_tasks) {
+                  nodeData.housekeeping_tasks.forEach(task => {
+                    if (task.template_id && !uniqueTemplatesMap.has(task.template_id)) {
+                      uniqueTemplatesMap.set(task.template_id, {
+                        id: task.template_id,
+                        name: task.template_name || 'Unknown',
+                        description: task.use_case,
+                        zone: {
+                          id: task.zone_id,
+                          name: task.zone_name,
+                          type: 'common', // Default
+                          floor: task.floor
+                        },
+                        tasks: [],
+                        totalTasks: 0,
+                        totalMinutes: 0,
+                        photosRequired: 0,
+                        status: 'active'
+                      });
+                    }
+                  });
+                }
+                setTemplates(Array.from(uniqueTemplatesMap.values()));
+
+                const taskCount = nodeData.housekeeping_tasks?.length || 0;
+                setActiveTasksCount(taskCount);
+                setPendingTasksCount(taskCount);
+              }
+              setShowCreateTaskModal(false);
+            } catch (error) {
+              console.error('Failed to create task:', error);
+              alert('Failed to create task. Please try again.');
+            }
+          }}
+          templates={templates}
+        />
       </div>
     </main>
   );
