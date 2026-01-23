@@ -19,7 +19,7 @@ interface Template {
   zone: {
     id: string;
     name: string;
-    type: 'studio' | 'dorm' | 'private_room' | 'common';
+    type: string;
     floor: string;
   };
   tasks: {
@@ -157,11 +157,10 @@ export function CreateTaskModal({ isOpen, onClose, onSave, templates = [] }: Cre
                         setTaskData({ ...taskData, templateId: template.id });
                         setShowTemplateDropdown(false);
                       }}
-                      className={`w-full p-4 text-left transition-all border-b border-[#27272a] last:border-b-0 ${
-                        taskData.templateId === template.id
-                          ? 'bg-[#9ae600]/5'
-                          : 'hover:bg-[#18181b]'
-                      }`}
+                      className={`w-full p-4 text-left transition-all border-b border-[#27272a] last:border-b-0 ${taskData.templateId === template.id
+                        ? 'bg-[#9ae600]/5'
+                        : 'hover:bg-[#18181b]'
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-xl">{getZoneTypeIcon(template.zone.type)}</span>
@@ -264,9 +263,10 @@ interface CreateTemplateModalProps {
   onClose: () => void;
   onSave: (template: Partial<Template>) => void;
   tasks: Task[];
+  zones: { id: string; name: string; type: string; floor: string }[];
 }
 
-export function CreateTemplateModal({ isOpen, onClose, onSave, tasks }: CreateTemplateModalProps) {
+export function CreateTemplateModal({ isOpen, onClose, onSave, tasks, zones }: CreateTemplateModalProps) {
   const [templateData, setTemplateData] = useState<Partial<Template>>({
     name: '',
     description: '',
@@ -280,14 +280,7 @@ export function CreateTemplateModal({ isOpen, onClose, onSave, tasks }: CreateTe
 
   if (!isOpen) return null;
 
-  // Mock zones (in production, fetch from API)
-  const zones = [
-    { id: 'z1', name: 'Private Room 301', type: 'private_room' as const, floor: 'Floor 3' },
-    { id: 'z2', name: 'Private Room 302', type: 'private_room' as const, floor: 'Floor 3' },
-    { id: 'z3', name: 'Studio 101', type: 'studio' as const, floor: 'Ground Floor' },
-    { id: 'z4', name: 'Dorm A', type: 'dorm' as const, floor: 'Floor 2' },
-    { id: 'z5', name: 'Degen Lounge', type: 'common' as const, floor: 'Ground Floor' },
-  ];
+
 
   const handleTaskToggle = (taskId: string) => {
     if (selectedTasks.includes(taskId)) {
@@ -326,7 +319,7 @@ export function CreateTemplateModal({ isOpen, onClose, onSave, tasks }: CreateTe
   };
 
   const getZoneTypeIcon = (type: string) => {
-    switch (type) {
+    switch (type?.toLowerCase()) {
       case 'studio': return '🏢';
       case 'dorm': return '🛏️';
       case 'private_room': return '🚪';
@@ -410,11 +403,10 @@ export function CreateTemplateModal({ isOpen, onClose, onSave, tasks }: CreateTe
                         setTemplateData({ ...templateData, zone });
                         setShowZoneDropdown(false);
                       }}
-                      className={`w-full p-4 text-left transition-all border-b border-[#27272a] last:border-b-0 ${
-                        templateData.zone?.id === zone.id
-                          ? 'bg-[#9ae600]/5'
-                          : 'hover:bg-[#18181b]'
-                      }`}
+                      className={`w-full p-4 text-left transition-all border-b border-[#27272a] last:border-b-0 ${templateData.zone?.id === zone.id
+                        ? 'bg-[#9ae600]/5'
+                        : 'hover:bg-[#18181b]'
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-xl">{getZoneTypeIcon(zone.type)}</span>
@@ -603,7 +595,7 @@ export function CreatePlaylistModal({ isOpen, onClose, onSave, templates }: Crea
   // Filter templates based on search and zone type
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         template.zone.name.toLowerCase().includes(searchQuery.toLowerCase());
+      template.zone.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesZoneType = zoneTypeFilter === 'all' || template.zone.type === zoneTypeFilter;
     return matchesSearch && matchesZoneType;
   });
@@ -676,51 +668,46 @@ export function CreatePlaylistModal({ isOpen, onClose, onSave, templates }: Crea
               <div className="flex gap-2">
                 <button
                   onClick={() => setZoneTypeFilter('all')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
-                    zoneTypeFilter === 'all'
-                      ? 'bg-[#9ae600] text-black'
-                      : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
-                  }`}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${zoneTypeFilter === 'all'
+                    ? 'bg-[#9ae600] text-black'
+                    : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
+                    }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setZoneTypeFilter('private_room')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    zoneTypeFilter === 'private_room'
-                      ? 'bg-[#9ae600] text-black'
-                      : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
-                  }`}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${zoneTypeFilter === 'private_room'
+                    ? 'bg-[#9ae600] text-black'
+                    : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
+                    }`}
                 >
                   <span>🚪</span> Private Room
                 </button>
                 <button
                   onClick={() => setZoneTypeFilter('studio')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    zoneTypeFilter === 'studio'
-                      ? 'bg-[#9ae600] text-black'
-                      : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
-                  }`}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${zoneTypeFilter === 'studio'
+                    ? 'bg-[#9ae600] text-black'
+                    : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
+                    }`}
                 >
                   <span>🏢</span> Studio
                 </button>
                 <button
                   onClick={() => setZoneTypeFilter('dorm')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    zoneTypeFilter === 'dorm'
-                      ? 'bg-[#9ae600] text-black'
-                      : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
-                  }`}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${zoneTypeFilter === 'dorm'
+                    ? 'bg-[#9ae600] text-black'
+                    : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
+                    }`}
                 >
                   <span>🛏️</span> Dorm
                 </button>
                 <button
                   onClick={() => setZoneTypeFilter('common')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    zoneTypeFilter === 'common'
-                      ? 'bg-[#9ae600] text-black'
-                      : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
-                  }`}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${zoneTypeFilter === 'common'
+                    ? 'bg-[#9ae600] text-black'
+                    : 'bg-[#18181b] text-[#9f9fa9] border border-[#27272a] hover:border-[#71717b]'
+                    }`}
                 >
                   <span>🏛️</span> Common
                 </button>

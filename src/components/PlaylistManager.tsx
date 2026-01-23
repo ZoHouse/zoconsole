@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Play, MapPin, Clock, ChevronDown, X, GripVertical, CheckCircle2, Edit2, Send, User, Camera, Bot, ListChecks, FileText, Layers, Package, ChevronRight } from 'lucide-react';
 import { CreateTaskModal, CreateTemplateModal, CreatePlaylistModal } from './TaskTemplatePlaylistModals';
+import { fetchNodeData, getUniqueZonesFromTasks, getUniqueTemplatesFromTasks, createTask, createTemplate, createZoneTemplate, createPlaylist, type HousekeepingTask, type Zone, type NodeTemplate, type CreateTaskPayload, type CreateTemplatePayload, type CreateZoneTemplatePayload, type CreatePlaylistPayload } from '../services/nodes';
 
 interface PlaylistManagerProps {
   selectedProperty: string;
@@ -66,6 +67,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
   const [searchQuery, setSearchQuery] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Modal states
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
@@ -76,136 +78,99 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
   const [expandedTasks, setExpandedTasks] = useState<string[]>([]);
   const [expandedTemplates, setExpandedTemplates] = useState<string[]>([]);
 
-  // Mock Tasks Library
-  const mockTasks: Task[] = [
-    { id: 'task1', name: 'Strip bed sheets', requiresPhoto: true, aiVerification: true, estimatedMinutes: 3, templateId: 'temp1', status: 'active' },
-    { id: 'task2', name: 'Replace with fresh linens', requiresPhoto: true, aiVerification: true, estimatedMinutes: 5, templateId: 'temp1', status: 'active' },
-    { id: 'task3', name: 'Fluff pillows', requiresPhoto: false, aiVerification: false, estimatedMinutes: 2, templateId: 'temp1', status: 'active' },
-    { id: 'task4', name: 'Scrub toilet bowl', requiresPhoto: true, aiVerification: true, estimatedMinutes: 5, templateId: 'temp2', status: 'active' },
-    { id: 'task5', name: 'Clean sink and mirror', requiresPhoto: true, aiVerification: true, estimatedMinutes: 4, templateId: 'temp2', status: 'active' },
-    { id: 'task6', name: 'Mop floor', requiresPhoto: true, aiVerification: true, estimatedMinutes: 6, templateId: 'temp2', status: 'active' },
-    { id: 'task7', name: 'Wipe desk', requiresPhoto: true, aiVerification: true, estimatedMinutes: 3, templateId: 'temp3', status: 'active' },
-    { id: 'task8', name: 'Sweep floor', requiresPhoto: true, aiVerification: false, estimatedMinutes: 5, templateId: 'temp3', status: 'active' },
-    { id: 'task9', name: 'Empty trash bins', requiresPhoto: true, aiVerification: false, estimatedMinutes: 2, templateId: 'temp3', status: 'active' },
-    { id: 'task10', name: 'Dust surfaces', requiresPhoto: true, aiVerification: true, estimatedMinutes: 4, templateId: 'temp3', status: 'active' },
-  ];
+  // API Data State
+  const [housekeepingTasks, setHousekeepingTasks] = useState<HousekeepingTask[]>([]);
+  const [apiZones, setApiZones] = useState<{ id: string; name: string; floor: string; type: string }[]>([]);
+  const [apiTemplates, setApiTemplates] = useState<{ id: string; name: string; use_case: string }[]>([]);
 
-  // Mock Templates (zone-assigned task collections)
-  const mockTemplates: Template[] = [
-    {
-      id: 'temp1',
-      name: 'Private Room - Bedding',
-      description: 'Complete bedding change protocol',
-      zone: { id: 'z1', name: 'Private Room 301', type: 'private_room', floor: 'Floor 3' },
-      tasks: [
-        { taskId: 'task1', order: 1 },
-        { taskId: 'task2', order: 2 },
-        { taskId: 'task3', order: 3 },
-      ],
-      totalTasks: 3,
-      totalMinutes: 10,
-      photosRequired: 2,
-      status: 'active'
-    },
-    {
-      id: 'temp2',
-      name: 'Private Room - Washroom',
-      description: 'Standard washroom cleaning',
-      zone: { id: 'z1', name: 'Private Room 301', type: 'private_room', floor: 'Floor 3' },
-      tasks: [
-        { taskId: 'task4', order: 1 },
-        { taskId: 'task5', order: 2 },
-        { taskId: 'task6', order: 3 },
-      ],
-      totalTasks: 3,
-      totalMinutes: 15,
-      photosRequired: 3,
-      status: 'active'
-    },
-    {
-      id: 'temp3',
-      name: 'Studio - Full Clean',
-      description: 'Complete studio cleaning',
-      zone: { id: 'z2', name: 'Studio 101', type: 'studio', floor: 'Ground Floor' },
-      tasks: [
-        { taskId: 'task7', order: 1 },
-        { taskId: 'task8', order: 2 },
-        { taskId: 'task9', order: 3 },
-        { taskId: 'task10', order: 4 },
-      ],
-      totalTasks: 4,
-      totalMinutes: 14,
-      photosRequired: 4,
-      status: 'active'
-    },
-    {
-      id: 'temp4',
-      name: 'Dorm - Quick Sweep',
-      description: 'Fast dorm room cleaning',
-      zone: { id: 'z3', name: 'Dorm A', type: 'dorm', floor: 'Floor 2' },
-      tasks: [
-        { taskId: 'task8', order: 1 },
-        { taskId: 'task9', order: 2 },
-      ],
-      totalTasks: 2,
-      totalMinutes: 7,
-      photosRequired: 2,
-      status: 'active'
-    },
-  ];
+  // Fetch node data on property change
+  useEffect(() => {
+    if (!selectedProperty || selectedProperty === 'all') return;
 
-  // Mock Playlists (template collections)
-  const mockPlaylists: Playlist[] = [
+    setIsLoading(true);
+    fetchNodeData(selectedProperty)
+      .then(nodeData => {
+        setHousekeepingTasks(nodeData.housekeeping_tasks);
+
+        // Prefer direct zones array if available, otherwise derive from tasks
+        if (nodeData.zones && nodeData.zones.length > 0) {
+          setApiZones(nodeData.zones.map(z => ({
+            id: z.id,
+            name: z.name,
+            floor: z.floor,
+            type: z.zone_type || 'common' // Map zone_type to type
+          })));
+        } else {
+          // Fallback to deriving from tasks (might miss type info)
+          const uniqueZones = getUniqueZonesFromTasks(nodeData.housekeeping_tasks);
+          setApiZones(uniqueZones.map(z => ({
+            ...z,
+            type: 'common' // Default type if not available
+          })));
+        }
+
+        setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, [selectedProperty]);
+
+  // Transform API data to component-compatible format
+  const tasks: Task[] = apiTemplates.map(template => ({
+    id: template.id,
+    name: template.name,
+    description: template.use_case,
+    requiresPhoto: true, // Default assumption
+    aiVerification: true, // Default assumption
+    estimatedMinutes: 5, // Default
+    templateId: template.id,
+    status: 'active' as const
+  }));
+
+  // Build templates from zone-template groupings
+  const templates: Template[] = apiZones.map(zone => {
+    const zoneTasks = housekeepingTasks.filter(t => t.zone_id === zone.id);
+    const uniqueTemplatesInZone = [...new Set(zoneTasks.map(t => t.template_id))];
+
+    return {
+      id: `${zone.id}-template`,
+      name: zone.name,
+      description: `Tasks for ${zone.name}`,
+      zone: {
+        id: zone.id,
+        name: zone.name,
+        type: zone.name.toLowerCase().includes('private') ? 'private_room' as const :
+          zone.name.toLowerCase().includes('studio') ? 'studio' as const :
+            zone.name.toLowerCase().includes('dorm') ? 'dorm' as const : 'common' as const,
+        floor: zone.floor
+      },
+      tasks: uniqueTemplatesInZone.map((templateId, idx) => ({
+        taskId: templateId,
+        order: idx + 1
+      })),
+      totalTasks: uniqueTemplatesInZone.length,
+      totalMinutes: uniqueTemplatesInZone.length * 5,
+      photosRequired: uniqueTemplatesInZone.length,
+      status: 'active' as const
+    };
+  });
+
+  // Mock playlists (API doesn't provide playlists, so we generate sample ones)
+  const playlists: Playlist[] = templates.length > 0 ? [
     {
       id: 'pl1',
-      name: 'Standard Room Turnover',
-      description: 'Quick turnover for private rooms',
-      type: 'room_turnover',
-      priority: 'urgent',
-      templateIds: ['temp1', 'temp2'],
-      lastUsed: '2 hours ago',
-      usageCount: 45,
-      totalTasks: 6,
-      totalTimeMins: 25,
-      photosRequired: 5,
-      status: 'active',
-      assignedTo: 'Priya Kumar',
-      completionRate: 94
-    },
-    {
-      id: 'pl2',
-      name: 'Studio Deep Clean',
-      description: 'Complete studio apartment deep cleaning',
+      name: 'All Zones Cleaning',
+      description: 'Complete cleaning for all property zones',
       type: 'deep_clean',
       priority: 'normal',
-      templateIds: ['temp3'],
-      lastUsed: 'Yesterday',
-      usageCount: 12,
-      totalTasks: 4,
-      totalTimeMins: 14,
-      photosRequired: 4,
+      templateIds: templates.slice(0, 3).map(t => t.id),
+      usageCount: 0,
+      totalTasks: templates.slice(0, 3).reduce((sum, t) => sum + t.totalTasks, 0),
+      totalTimeMins: templates.slice(0, 3).reduce((sum, t) => sum + t.totalMinutes, 0),
+      photosRequired: templates.slice(0, 3).reduce((sum, t) => sum + t.photosRequired, 0),
       status: 'active',
-      completionRate: 88
-    },
-    {
-      id: 'pl3',
-      name: 'Dorm Morning Rounds',
-      description: 'Daily dorm inspection and cleaning',
-      type: 'custom',
-      priority: 'normal',
-      templateIds: ['temp4'],
-      lastUsed: '3 days ago',
-      usageCount: 28,
-      totalTasks: 2,
-      totalTimeMins: 7,
-      photosRequired: 2,
-      status: 'active',
-    },
-  ];
-
-  const [tasks] = useState<Task[]>(mockTasks);
-  const [templates] = useState<Template[]>(mockTemplates);
-  const [playlists] = useState<Playlist[]>(mockPlaylists);
+    }
+  ] : [];
 
   const getPriorityConfig = (priority: 'urgent' | 'normal' | 'low') => {
     switch (priority) {
@@ -241,11 +206,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
           <div className="flex items-center gap-2 mb-6 border-b border-[#27272a]">
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative ${
-                activeTab === 'tasks'
-                  ? 'text-[#9ae600]'
-                  : 'text-[#71717b] hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative ${activeTab === 'tasks'
+                ? 'text-[#9ae600]'
+                : 'text-[#71717b] hover:text-white'
+                }`}
             >
               <ListChecks className="w-4 h-4" />
               Tasks
@@ -255,11 +219,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
             </button>
             <button
               onClick={() => setActiveTab('templates')}
-              className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative ${
-                activeTab === 'templates'
-                  ? 'text-[#9ae600]'
-                  : 'text-[#71717b] hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative ${activeTab === 'templates'
+                ? 'text-[#9ae600]'
+                : 'text-[#71717b] hover:text-white'
+                }`}
             >
               <FileText className="w-4 h-4" />
               Templates
@@ -269,11 +232,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
             </button>
             <button
               onClick={() => setActiveTab('playlists')}
-              className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative ${
-                activeTab === 'playlists'
-                  ? 'text-[#9ae600]'
-                  : 'text-[#71717b] hover:text-white'
-              }`}
+              className={`flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative ${activeTab === 'playlists'
+                ? 'text-[#9ae600]'
+                : 'text-[#71717b] hover:text-white'
+                }`}
             >
               <Layers className="w-4 h-4" />
               Playlists
@@ -293,7 +255,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                     <h2 className="text-xl font-semibold">Task Library</h2>
                     <p className="text-sm text-[#9f9fa9]">Individual tasks that can be added to templates</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowCreateTaskModal(true)}
                     className="px-4 py-2 bg-[#9ae600] text-black rounded-lg font-medium hover:bg-[#8bd500] transition-colors flex items-center gap-2"
                   >
@@ -320,7 +282,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                     {tasks.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase())).map((task) => {
                       const isExpanded = expandedTasks.includes(task.id);
                       const taskTemplate = templates.find(t => t.id === task.templateId);
-                      
+
                       return (
                         <div key={task.id} className="bg-[#0d0d0d] border border-[#27272a] rounded-lg overflow-hidden hover:border-[#71717b] transition-all">
                           {/* Header - Always Visible */}
@@ -341,7 +303,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                                 <ChevronRight className="w-4 h-4 text-[#9f9fa9]" />
                               )}
                             </div>
-                            
+
                             <div className="flex-1 min-w-0">
                               <h3 className="text-sm font-medium truncate">{task.name}</h3>
                               <div className="flex items-center gap-3 mt-1">
@@ -364,14 +326,21 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                               </div>
                             </div>
 
-                            <button 
+                            <div
+                              role="button"
+                              tabIndex={0}
                               onClick={(e) => {
                                 e.stopPropagation();
                               }}
-                              className="p-2 hover:bg-[#27272a] rounded transition-colors"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.stopPropagation();
+                                }
+                              }}
+                              className="p-2 hover:bg-[#27272a] rounded transition-colors cursor-pointer"
                             >
                               <MoreVertical className="w-4 h-4 text-[#9f9fa9]" />
-                            </button>
+                            </div>
                           </button>
 
                           {/* Expanded Content */}
@@ -383,7 +352,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                                   <div className="text-sm">{task.description}</div>
                                 </div>
                               )}
-                              
+
                               <div>
                                 <div className="text-xs text-[#9f9fa9] mb-1">Assigned Template</div>
                                 <div className="p-2 bg-[#0d0d0d] rounded flex items-center gap-2">
@@ -451,7 +420,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                     <h2 className="text-xl font-semibold">Template Library</h2>
                     <p className="text-sm text-[#9f9fa9]">Zone-assigned collections of tasks</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowCreateTemplateModal(true)}
                     className="px-4 py-2 bg-[#9ae600] text-black rounded-lg font-medium hover:bg-[#8bd500] transition-colors flex items-center gap-2"
                   >
@@ -477,14 +446,14 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                   <div className="space-y-2">
                     {templates.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase())).map((template) => {
                       const isExpanded = expandedTemplates.includes(template.id);
-                      const templateTasks = tasks.filter(task => 
+                      const templateTasks = tasks.filter(task =>
                         template.tasks.some(t => t.taskId === task.id)
                       ).sort((a, b) => {
                         const orderA = template.tasks.find(t => t.taskId === a.id)?.order || 0;
                         const orderB = template.tasks.find(t => t.taskId === b.id)?.order || 0;
                         return orderA - orderB;
                       });
-                      
+
                       return (
                         <div key={template.id} className="bg-[#0d0d0d] border border-[#27272a] rounded-lg overflow-hidden hover:border-[#71717b] transition-all">
                           {/* Header - Always Visible */}
@@ -505,9 +474,9 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                                 <ChevronRight className="w-4 h-4 text-[#9f9fa9]" />
                               )}
                             </div>
-                            
+
                             <span className="text-base">{getZoneTypeIcon(template.zone.type)}</span>
-                            
+
                             <div className="flex-1 min-w-0">
                               <h3 className="text-sm font-medium truncate">{template.name}</h3>
                               <div className="flex items-center gap-3 mt-1">
@@ -519,14 +488,21 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                               </div>
                             </div>
 
-                            <button 
+                            <div
+                              role="button"
+                              tabIndex={0}
                               onClick={(e) => {
                                 e.stopPropagation();
                               }}
-                              className="p-2 hover:bg-[#27272a] rounded transition-colors"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.stopPropagation();
+                                }
+                              }}
+                              className="p-2 hover:bg-[#27272a] rounded transition-colors cursor-pointer"
                             >
                               <MoreVertical className="w-4 h-4 text-[#9f9fa9]" />
-                            </button>
+                            </div>
                           </button>
 
                           {/* Expanded Content */}
@@ -538,7 +514,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                                   <div className="text-sm">{template.description}</div>
                                 </div>
                               )}
-                              
+
                               {/* Zone Info */}
                               <div>
                                 <div className="text-xs text-[#9f9fa9] mb-2">Zone Assignment</div>
@@ -633,7 +609,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                     <h2 className="text-xl font-semibold">Playlist Library</h2>
                     <p className="text-sm text-[#9f9fa9]">Collections of templates ready to assign to staff</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowCreatePlaylistModal(true)}
                     className="px-4 py-2 bg-[#9ae600] text-black rounded-lg font-medium hover:bg-[#8bd500] transition-colors flex items-center gap-2"
                   >
@@ -660,7 +636,7 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                     {playlists.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map((playlist) => {
                       const priorityConfig = getPriorityConfig(playlist.priority);
                       const playlistTemplates = templates.filter(t => playlist.templateIds.includes(t.id));
-                      
+
                       return (
                         <div key={playlist.id} className="bg-[#0d0d0d] border border-[#27272a] rounded-lg p-4 hover:border-[#71717b] transition-all">
                           <div className="flex items-start justify-between mb-2">
@@ -766,11 +742,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                     <button
                       key={staff.id}
                       disabled={!staff.available}
-                      className={`p-4 rounded-lg border text-left transition-all ${
-                        staff.available
-                          ? 'border-[#27272a] hover:border-[#9ae600] hover:bg-[#9ae600]/5'
-                          : 'border-[#27272a] opacity-50 cursor-not-allowed'
-                      }`}
+                      className={`p-4 rounded-lg border text-left transition-all ${staff.available
+                        ? 'border-[#27272a] hover:border-[#9ae600] hover:bg-[#9ae600]/5'
+                        : 'border-[#27272a] opacity-50 cursor-not-allowed'
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#9ae600]/20 rounded-full flex items-center justify-center">
@@ -798,11 +773,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
                     return (
                       <button
                         key={priority}
-                        className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                          selectedPlaylist.priority === priority
-                            ? `border-[#9ae600] ${config.bg}`
-                            : 'bg-[#18181b] border-[#27272a] hover:border-[#71717b]'
-                        }`}
+                        className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedPlaylist.priority === priority
+                          ? `border-[#9ae600] ${config.bg}`
+                          : 'bg-[#18181b] border-[#27272a] hover:border-[#71717b]'
+                          }`}
                       >
                         <span className="text-base">{config.emoji}</span>
                         <span className={selectedPlaylist.priority === priority ? config.color : 'text-[#9f9fa9]'}>
@@ -924,9 +898,62 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
       <CreateTaskModal
         isOpen={showCreateTaskModal}
         onClose={() => setShowCreateTaskModal(false)}
-        onSave={(task) => {
-          console.log('Created task:', task);
-          setShowCreateTaskModal(false);
+        onSave={async (task) => {
+          try {
+            // Generate a unique task_id
+            const taskId = `T${Date.now().toString(36).toUpperCase()}`;
+            const payload: CreateTaskPayload = {
+              node_id: selectedProperty?.toLowerCase(),
+              task_id: taskId,
+              task_name: task.name || '',
+              task_description: task.description,
+              photo_required: task.requiresPhoto ? 'yes' : 'no',
+              estimated_time: `${task.estimatedMinutes}m`,
+              category: 'general'
+            };
+            const response = await createTask(payload);
+            console.log('Task created successfully:', payload);
+
+            // If a template was selected, link the task to it
+            if (task.templateId) {
+              const assignedTemplate = templates.find(t => t.id === task.templateId);
+              if (assignedTemplate) {
+                const linkPayload: CreateTemplatePayload = {
+                  node_id: selectedProperty?.toLowerCase(),
+                  template_id: assignedTemplate.id,
+                  template_name: assignedTemplate.name,
+                  task_id: response.task_id, // Use the ID returned from API
+                  task_name: payload.task_name,
+                  total_est_time: payload.estimated_time
+                };
+                await createTemplate(linkPayload);
+                console.log('Linked task to template:', linkPayload);
+              }
+            }
+
+            // Refresh data
+            if (selectedProperty && selectedProperty !== 'all') {
+              const nodeData = await fetchNodeData(selectedProperty);
+              setHousekeepingTasks(nodeData.housekeeping_tasks);
+
+              if (nodeData.zones && nodeData.zones.length > 0) {
+                setApiZones(nodeData.zones.map(z => ({
+                  id: z.id,
+                  name: z.name,
+                  floor: z.floor,
+                  type: z.zone_type || 'common'
+                })));
+              } else {
+                setApiZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks).map(z => ({ ...z, type: 'common' })));
+              }
+
+              setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+            }
+            setShowCreateTaskModal(false);
+          } catch (error) {
+            console.error('Failed to create task:', error);
+            alert('Failed to create task. Please try again.');
+          }
         }}
         templates={templates}
       />
@@ -935,20 +962,100 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
       <CreateTemplateModal
         isOpen={showCreateTemplateModal}
         onClose={() => setShowCreateTemplateModal(false)}
-        onSave={(template) => {
-          console.log('Created template:', template);
-          setShowCreateTemplateModal(false);
+        onSave={async (template) => {
+          try {
+            const templateId = `TPL${Date.now().toString(36).toUpperCase()}`;
+            // 1. Create the template
+            const payload: CreateTemplatePayload = {
+              node_id: selectedProperty?.toLowerCase(),
+              template_id: templateId,
+              template_name: template.name || '',
+              total_est_time: `${template.totalMinutes || 0}m`
+            };
+            await createTemplate(payload);
+            console.log('Template created successfully:', payload);
+
+            // 2. Link template to zone
+            if (template.zone) {
+              const zonePayload: CreateZoneTemplatePayload = {
+                node_id: selectedProperty?.toLowerCase(),
+                zone_id: template.zone.id,
+                zone_name: template.zone.name,
+                floor: template.zone.floor,
+                template_id: templateId,
+                template_name: template.name || '',
+                use_case: template.description || ''
+              };
+              await createZoneTemplate(zonePayload);
+              console.log('Linked template to zone:', zonePayload);
+            }
+
+            // Refresh data
+            if (selectedProperty && selectedProperty !== 'all') {
+              const nodeData = await fetchNodeData(selectedProperty);
+              setHousekeepingTasks(nodeData.housekeeping_tasks);
+
+              if (nodeData.zones && nodeData.zones.length > 0) {
+                setApiZones(nodeData.zones.map(z => ({
+                  id: z.id,
+                  name: z.name,
+                  floor: z.floor,
+                  type: z.zone_type || 'common' // Map zone_type to type
+                })));
+              } else {
+                setApiZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks).map(z => ({ ...z, type: 'common' })));
+              }
+
+              setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+            }
+            setShowCreateTemplateModal(false);
+          } catch (error) {
+            console.error('Failed to create template:', error);
+            alert('Failed to create template. Please try again.');
+          }
         }}
         tasks={tasks}
+        zones={apiZones}
       />
 
       {/* Create Playlist Modal */}
       <CreatePlaylistModal
         isOpen={showCreatePlaylistModal}
         onClose={() => setShowCreatePlaylistModal(false)}
-        onSave={(playlist) => {
-          console.log('Created playlist:', playlist);
-          setShowCreatePlaylistModal(false);
+        onSave={async (playlist) => {
+          try {
+            const payload: CreatePlaylistPayload = {
+              node_id: selectedProperty?.toLowerCase(),
+              playlist_type: playlist.type || 'custom',
+              templates_included: (playlist.templateIds || []).join(','),
+              priority: playlist.priority === 'urgent' ? 'high' : (playlist.priority || 'normal'),
+              est_time: `${(playlist as any).totalTimeMins || 0}m`
+            };
+            await createPlaylist(payload);
+            console.log('Playlist created successfully:', payload);
+            // Refresh data
+            if (selectedProperty && selectedProperty !== 'all') {
+              const nodeData = await fetchNodeData(selectedProperty);
+              setHousekeepingTasks(nodeData.housekeeping_tasks);
+
+              if (nodeData.zones && nodeData.zones.length > 0) {
+                setApiZones(nodeData.zones.map(z => ({
+                  id: z.id,
+                  name: z.name,
+                  floor: z.floor,
+                  type: z.zone_type || 'common'
+                })));
+              } else {
+                setApiZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks).map(z => ({ ...z, type: 'common' })));
+              }
+
+              setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+            }
+            setShowCreatePlaylistModal(false);
+          } catch (error) {
+            console.error('Failed to create playlist:', error);
+            alert('Failed to create playlist. Please try again.');
+          }
         }}
         templates={templates}
       />

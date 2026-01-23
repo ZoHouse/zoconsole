@@ -1,68 +1,35 @@
 {
-	"info": {
-		"_postman_id": "zohm-api-collection",
-		"name": "Zohm API",
-		"description": "Zohm API - Proxy for Zo authentication and task management",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
 	"auth": {
-		"type": "apikey",
 		"apikey": [
 			{
 				"key": "key",
-				"value": "Authorization",
-				"type": "string"
+				"type": "string",
+				"value": "Authorization"
 			},
 			{
 				"key": "value",
-				"value": "Bearer {{access_token}}",
-				"type": "string"
+				"type": "string",
+				"value": "Bearer {{access_token}}"
 			},
 			{
 				"key": "in",
-				"value": "header",
-				"type": "string"
+				"type": "string",
+				"value": "header"
 			}
-		]
+		],
+		"type": "apikey"
 	},
-	"variable": [
-		{
-			"key": "base_url",
-			"value": "http://localhost:8080/api/v1",
-			"type": "string"
-		},
-		{
-			"key": "client_key",
-			"value": "b3fdb161cba6f3ffe42c",
-			"type": "string"
-		},
-		{
-			"key": "client_device_id",
-			"value": "8c1af122-aaba-46ce-ac9e-f26401884867",
-			"type": "string"
-		},
-		{
-			"key": "client_device_secret",
-			"value": "f7a8e455-44ab-430a-8d90-bae43792fe58",
-			"type": "string"
-		},
-		{
-			"key": "access_token",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "refresh_token",
-			"value": "",
-			"type": "string"
-		}
-	],
+	"info": {
+		"_postman_id": "zohm-api-collection",
+		"description": "Zohm API - Proxy for Zo authentication and task management",
+		"name": "Zohm API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
 	"item": [
 		{
-			"name": "Auth",
+			"description": "Authentication endpoints",
 			"item": [
 				{
-					"name": "Send OTP",
 					"event": [
 						{
 							"listen": "test",
@@ -76,48 +43,55 @@
 							}
 						}
 					],
+					"name": "Send OTP",
 					"request": {
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "client-key",
-								"value": "{{client_key}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-id",
-								"value": "{{client_device_id}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-secret",
-								"value": "{{client_device_secret}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"message_channel\": \"\",\n  \"mobile_country_code\": \"91\",\n  \"mobile_number\": \"9632041311\"\n}"
 						},
+						"description": "Send OTP to mobile number for authentication",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/auth/login/mobile/otp",
-							"host": ["{{base_url}}"],
-							"path": ["auth", "login", "mobile", "otp"]
-						},
-						"description": "Send OTP to mobile number for authentication"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login",
+								"mobile",
+								"otp"
+							],
+							"raw": "{{base_url}}/auth/login/mobile/otp"
+						}
 					},
 					"response": []
 				},
 				{
-					"name": "Verify OTP (Login)",
 					"event": [
 						{
 							"listen": "test",
@@ -128,11 +102,11 @@
 									"});",
 									"",
 									"var jsonData = pm.response.json();",
-									"if (jsonData.data && jsonData.data.access_token) {",
+									"if (jsonData.data \u0026\u0026 jsonData.data.access_token) {",
 									"    pm.collectionVariables.set(\"access_token\", jsonData.data.access_token);",
 									"    console.log(\"Access token saved: \" + jsonData.data.access_token);",
 									"}",
-									"if (jsonData.data && jsonData.data.refresh_token) {",
+									"if (jsonData.data \u0026\u0026 jsonData.data.refresh_token) {",
 									"    pm.collectionVariables.set(\"refresh_token\", jsonData.data.refresh_token);",
 									"    console.log(\"Refresh token saved: \" + jsonData.data.refresh_token);",
 									"}"
@@ -141,83 +115,95 @@
 							}
 						}
 					],
+					"name": "Verify OTP (Login)",
 					"request": {
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "client-key",
-								"value": "{{client_key}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-id",
-								"value": "{{client_device_id}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-secret",
-								"value": "{{client_device_secret}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"mobile_country_code\": \"91\",\n  \"mobile_number\": \"9632041311\",\n  \"otp\": \"123456\"\n}"
 						},
+						"description": "Verify OTP and login to get access token. Token is automatically saved to collection variables.",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/auth/login/mobile",
-							"host": ["{{base_url}}"],
-							"path": ["auth", "login", "mobile"]
-						},
-						"description": "Verify OTP and login to get access token. Token is automatically saved to collection variables."
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login",
+								"mobile"
+							],
+							"raw": "{{base_url}}/auth/login/mobile"
+						}
 					},
 					"response": []
 				},
 				{
 					"name": "Check Login",
 					"request": {
-						"method": "GET",
+						"description": "Check if user is logged in",
 						"header": [
 							{
 								"key": "client-key",
-								"value": "{{client_key}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_key}}"
 							},
 							{
 								"key": "client-device-id",
-								"value": "{{client_device_id}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_device_id}}"
 							},
 							{
 								"key": "client-device-secret",
-								"value": "{{client_device_secret}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_device_secret}}"
 							},
 							{
 								"key": "accept",
-								"value": "application/json",
-								"type": "text"
+								"type": "text",
+								"value": "application/json"
 							}
 						],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/auth/login/check",
-							"host": ["{{base_url}}"],
-							"path": ["auth", "login", "check"]
-						},
-						"description": "Check if user is logged in"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login",
+								"check"
+							],
+							"raw": "{{base_url}}/auth/login/check"
+						}
 					},
 					"response": []
 				},
 				{
-					"name": "Refresh Token",
 					"event": [
 						{
 							"listen": "test",
@@ -228,11 +214,11 @@
 									"});",
 									"",
 									"var jsonData = pm.response.json();",
-									"if (jsonData.data && jsonData.data.access_token) {",
+									"if (jsonData.data \u0026\u0026 jsonData.data.access_token) {",
 									"    pm.collectionVariables.set(\"access_token\", jsonData.data.access_token);",
 									"    console.log(\"New access token saved\");",
 									"}",
-									"if (jsonData.data && jsonData.data.refresh_token) {",
+									"if (jsonData.data \u0026\u0026 jsonData.data.refresh_token) {",
 									"    pm.collectionVariables.set(\"refresh_token\", jsonData.data.refresh_token);",
 									"    console.log(\"New refresh token saved\");",
 									"}"
@@ -241,158 +227,180 @@
 							}
 						}
 					],
+					"name": "Refresh Token",
 					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "client-key",
-								"value": "{{client_key}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-id",
-								"value": "{{client_device_id}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-secret",
-								"value": "{{client_device_secret}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
 						},
+						"description": "Refresh authentication tokens using refresh token",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/auth/login/refresh",
-							"host": ["{{base_url}}"],
-							"path": ["auth", "login", "refresh"]
-						},
-						"description": "Refresh authentication tokens using refresh token"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login",
+								"refresh"
+							],
+							"raw": "{{base_url}}/auth/login/refresh"
+						}
 					},
 					"response": []
 				},
 				{
 					"name": "Logout",
 					"request": {
-						"method": "POST",
+						"description": "Logout user and invalidate session",
 						"header": [
 							{
 								"key": "client-key",
-								"value": "{{client_key}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_key}}"
 							},
 							{
 								"key": "client-device-id",
-								"value": "{{client_device_id}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_device_id}}"
 							},
 							{
 								"key": "client-device-secret",
-								"value": "{{client_device_secret}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_device_secret}}"
 							}
 						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/auth/logout",
-							"host": ["{{base_url}}"],
-							"path": ["auth", "logout"]
-						},
-						"description": "Logout user and invalidate session"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							],
+							"raw": "{{base_url}}/auth/logout"
+						}
 					},
 					"response": []
 				}
 			],
-			"description": "Authentication endpoints"
+			"name": "Auth"
 		},
 		{
-			"name": "Profile",
+			"description": "Profile management endpoints",
 			"item": [
 				{
 					"name": "Get Profile",
 					"request": {
-						"method": "GET",
+						"description": "Get current user's profile from Zo API",
 						"header": [
 							{
 								"key": "client-key",
-								"value": "{{client_key}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_key}}"
 							},
 							{
 								"key": "client-device-id",
-								"value": "{{client_device_id}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_device_id}}"
 							},
 							{
 								"key": "client-device-secret",
-								"value": "{{client_device_secret}}",
-								"type": "text"
+								"type": "text",
+								"value": "{{client_device_secret}}"
 							},
 							{
 								"key": "accept",
-								"value": "application/json",
-								"type": "text"
+								"type": "text",
+								"value": "application/json"
 							}
 						],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/profile/me",
-							"host": ["{{base_url}}"],
-							"path": ["profile", "me"]
-						},
-						"description": "Get current user's profile from Zo API"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"profile",
+								"me"
+							],
+							"raw": "{{base_url}}/profile/me"
+						}
 					},
 					"response": []
 				},
 				{
 					"name": "Update Profile",
 					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "client-key",
-								"value": "{{client_key}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-id",
-								"value": "{{client_device_id}}",
-								"type": "text"
-							},
-							{
-								"key": "client-device-secret",
-								"value": "{{client_device_secret}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"body_type\": \"bro\"\n}"
 						},
+						"description": "Update current user's profile (partial update)",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "PATCH",
 						"url": {
-							"raw": "{{base_url}}/profile/me",
-							"host": ["{{base_url}}"],
-							"path": ["profile", "me"]
-						},
-						"description": "Update current user's profile (partial update)"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"profile",
+								"me"
+							],
+							"raw": "{{base_url}}/profile/me"
+						}
 					},
 					"response": []
 				}
 			],
-			"description": "Profile management endpoints"
+			"name": "Profile"
 		},
 		{
-			"name": "Tasks",
+			"description": "Task management endpoints",
 			"item": [
 				{
 					"name": "List Tasks",
@@ -400,14 +408,18 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get all tasks",
 						"header": [],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/tasks",
-							"host": ["{{base_url}}"],
-							"path": ["tasks"]
-						},
-						"description": "Get all tasks"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tasks"
+							],
+							"raw": "{{base_url}}/tasks"
+						}
 					},
 					"response": []
 				},
@@ -417,20 +429,25 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get task by ID",
 						"header": [],
+						"method": "GET",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tasks",
+								":id"
+							],
 							"raw": "{{base_url}}/tasks/:id",
-							"host": ["{{base_url}}"],
-							"path": ["tasks", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "task-uuid-here"
 								}
 							]
-						},
-						"description": "Get task by ID"
+						}
 					},
 					"response": []
 				},
@@ -440,24 +457,28 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"task_id\": \"TASK001\",\n  \"task_name\": \"Sample Task\",\n  \"task_description\": \"Description of the task\",\n  \"photo_required\": \"yes\",\n  \"estimated_time\": \"30m\",\n  \"category\": \"general\"\n}"
 						},
+						"description": "Create a new task",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/tasks",
-							"host": ["{{base_url}}"],
-							"path": ["tasks"]
-						},
-						"description": "Create a new task"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tasks"
+							],
+							"raw": "{{base_url}}/tasks"
+						}
 					},
 					"response": []
 				},
@@ -467,30 +488,35 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"task_name\": \"Updated Task Name\"\n}"
 						},
+						"description": "Update an existing task",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "PATCH",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tasks",
+								":id"
+							],
 							"raw": "{{base_url}}/tasks/:id",
-							"host": ["{{base_url}}"],
-							"path": ["tasks", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "task-uuid-here"
 								}
 							]
-						},
-						"description": "Update an existing task"
+						}
 					},
 					"response": []
 				},
@@ -500,28 +526,33 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "DELETE",
+						"description": "Delete a task",
 						"header": [],
+						"method": "DELETE",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tasks",
+								":id"
+							],
 							"raw": "{{base_url}}/tasks/:id",
-							"host": ["{{base_url}}"],
-							"path": ["tasks", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "task-uuid-here"
 								}
 							]
-						},
-						"description": "Delete a task"
+						}
 					},
 					"response": []
 				}
 			],
-			"description": "Task management endpoints"
+			"name": "Tasks"
 		},
 		{
-			"name": "Templates",
+			"description": "Template management endpoints",
 			"item": [
 				{
 					"name": "List Templates",
@@ -529,14 +560,18 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get all templates",
 						"header": [],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/templates",
-							"host": ["{{base_url}}"],
-							"path": ["templates"]
-						},
-						"description": "Get all templates"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"templates"
+							],
+							"raw": "{{base_url}}/templates"
+						}
 					},
 					"response": []
 				},
@@ -546,20 +581,25 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get template by ID",
 						"header": [],
+						"method": "GET",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"templates",
+								":id"
+							],
 							"raw": "{{base_url}}/templates/:id",
-							"host": ["{{base_url}}"],
-							"path": ["templates", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "template-uuid-here"
 								}
 							]
-						},
-						"description": "Get template by ID"
+						}
 					},
 					"response": []
 				},
@@ -569,24 +609,28 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"template_id\": \"TPL001\",\n  \"template_name\": \"Sample Template\",\n  \"item_order\": \"1\",\n  \"task_id\": \"TASK001\",\n  \"task_name\": \"Sample Task\",\n  \"total_est_time\": \"1h\"\n}"
 						},
+						"description": "Create a new template",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/templates",
-							"host": ["{{base_url}}"],
-							"path": ["templates"]
-						},
-						"description": "Create a new template"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"templates"
+							],
+							"raw": "{{base_url}}/templates"
+						}
 					},
 					"response": []
 				},
@@ -596,30 +640,35 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"template_name\": \"Updated Template Name\"\n}"
 						},
+						"description": "Update an existing template",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "PATCH",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"templates",
+								":id"
+							],
 							"raw": "{{base_url}}/templates/:id",
-							"host": ["{{base_url}}"],
-							"path": ["templates", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "template-uuid-here"
 								}
 							]
-						},
-						"description": "Update an existing template"
+						}
 					},
 					"response": []
 				},
@@ -629,28 +678,33 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "DELETE",
+						"description": "Delete a template",
 						"header": [],
+						"method": "DELETE",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"templates",
+								":id"
+							],
 							"raw": "{{base_url}}/templates/:id",
-							"host": ["{{base_url}}"],
-							"path": ["templates", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "template-uuid-here"
 								}
 							]
-						},
-						"description": "Delete a template"
+						}
 					},
 					"response": []
 				}
 			],
-			"description": "Template management endpoints"
+			"name": "Templates"
 		},
 		{
-			"name": "Zone Templates",
+			"description": "Zone template mapping endpoints",
 			"item": [
 				{
 					"name": "List Zone Templates",
@@ -658,14 +712,18 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get all zone template mappings",
 						"header": [],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/zone-templates",
-							"host": ["{{base_url}}"],
-							"path": ["zone-templates"]
-						},
-						"description": "Get all zone template mappings"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"zone-templates"
+							],
+							"raw": "{{base_url}}/zone-templates"
+						}
 					},
 					"response": []
 				},
@@ -675,20 +733,25 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get zone template mapping by ID",
 						"header": [],
+						"method": "GET",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"zone-templates",
+								":id"
+							],
 							"raw": "{{base_url}}/zone-templates/:id",
-							"host": ["{{base_url}}"],
-							"path": ["zone-templates", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "zone-template-uuid-here"
 								}
 							]
-						},
-						"description": "Get zone template mapping by ID"
+						}
 					},
 					"response": []
 				},
@@ -698,24 +761,28 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"zone_id\": \"ZONE001\",\n  \"zone_name\": \"Main Zone\",\n  \"floor\": \"1\",\n  \"template_id\": \"TPL001\",\n  \"template_name\": \"Sample Template\",\n  \"use_case\": \"general\"\n}"
 						},
+						"description": "Create a new zone template mapping",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/zone-templates",
-							"host": ["{{base_url}}"],
-							"path": ["zone-templates"]
-						},
-						"description": "Create a new zone template mapping"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"zone-templates"
+							],
+							"raw": "{{base_url}}/zone-templates"
+						}
 					},
 					"response": []
 				},
@@ -725,30 +792,35 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"zone_name\": \"Updated Zone Name\"\n}"
 						},
+						"description": "Update an existing zone template mapping",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "PATCH",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"zone-templates",
+								":id"
+							],
 							"raw": "{{base_url}}/zone-templates/:id",
-							"host": ["{{base_url}}"],
-							"path": ["zone-templates", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "zone-template-uuid-here"
 								}
 							]
-						},
-						"description": "Update an existing zone template mapping"
+						}
 					},
 					"response": []
 				},
@@ -758,28 +830,33 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "DELETE",
+						"description": "Delete a zone template mapping",
 						"header": [],
+						"method": "DELETE",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"zone-templates",
+								":id"
+							],
 							"raw": "{{base_url}}/zone-templates/:id",
-							"host": ["{{base_url}}"],
-							"path": ["zone-templates", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "zone-template-uuid-here"
 								}
 							]
-						},
-						"description": "Delete a zone template mapping"
+						}
 					},
 					"response": []
 				}
 			],
-			"description": "Zone template mapping endpoints"
+			"name": "Zone Templates"
 		},
 		{
-			"name": "Playlists",
+			"description": "Playlist management endpoints",
 			"item": [
 				{
 					"name": "List Playlists",
@@ -787,14 +864,18 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get all playlists",
 						"header": [],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/playlists",
-							"host": ["{{base_url}}"],
-							"path": ["playlists"]
-						},
-						"description": "Get all playlists"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"playlists"
+							],
+							"raw": "{{base_url}}/playlists"
+						}
 					},
 					"response": []
 				},
@@ -804,20 +885,25 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Get playlist by ID",
 						"header": [],
+						"method": "GET",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"playlists",
+								":id"
+							],
 							"raw": "{{base_url}}/playlists/:id",
-							"host": ["{{base_url}}"],
-							"path": ["playlists", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "playlist-uuid-here"
 								}
 							]
-						},
-						"description": "Get playlist by ID"
+						}
 					},
 					"response": []
 				},
@@ -827,24 +913,28 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"playlist_type\": \"daily\",\n  \"role\": \"cleaner\",\n  \"zones\": \"ZONE001,ZONE002\",\n  \"templates_included\": \"TPL001,TPL002\",\n  \"priority\": \"high\",\n  \"est_time\": \"2h\",\n  \"trigger_when\": \"morning\"\n}"
 						},
+						"description": "Create a new playlist",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
 						"url": {
-							"raw": "{{base_url}}/playlists",
-							"host": ["{{base_url}}"],
-							"path": ["playlists"]
-						},
-						"description": "Create a new playlist"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"playlists"
+							],
+							"raw": "{{base_url}}/playlists"
+						}
 					},
 					"response": []
 				},
@@ -854,30 +944,35 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"priority\": \"medium\"\n}"
 						},
+						"description": "Update an existing playlist",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "PATCH",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"playlists",
+								":id"
+							],
 							"raw": "{{base_url}}/playlists/:id",
-							"host": ["{{base_url}}"],
-							"path": ["playlists", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "playlist-uuid-here"
 								}
 							]
-						},
-						"description": "Update an existing playlist"
+						}
 					},
 					"response": []
 				},
@@ -887,633 +982,1515 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "DELETE",
+						"description": "Delete a playlist",
 						"header": [],
+						"method": "DELETE",
 						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"playlists",
+								":id"
+							],
 							"raw": "{{base_url}}/playlists/:id",
-							"host": ["{{base_url}}"],
-							"path": ["playlists", ":id"],
 							"variable": [
 								{
 									"key": "id",
 									"value": "playlist-uuid-here"
 								}
 							]
-						},
-						"description": "Delete a playlist"
+						}
 					},
 					"response": []
 				}
 			],
-			"description": "Playlist management endpoints"
+			"name": "Playlists"
 		},
 		{
-			"name": "Analytics",
+			"description": "Analytics endpoints (Read-only)",
 			"item": [
 				{
-					"name": "Daily Performance",
-					"request": {
-						"auth": {
-							"type": "noauth"
+					"description": "Daily Performance management endpoints",
+					"item": [
+						{
+							"name": "List Daily Performance",
+							"request": {
+								"description": "Get all daily performance record",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"daily-performance"
+									],
+									"raw": "{{base_url}}/daily-performance"
+								}
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/daily-performance",
-							"host": ["{{base_url}}"],
-							"path": ["daily-performance"],
-							"query": [
-								{ "key": "staff_id", "value": "", "disabled": true, "description": "Filter by staff ID" },
-								{ "key": "property_id", "value": "", "disabled": true, "description": "Filter by property ID" },
-								{ "key": "shift_date", "value": "", "disabled": true, "description": "Filter by shift date (YYYY-MM-DD)" }
-							]
+						{
+							"name": "Get Daily Performance",
+							"request": {
+								"description": "Get daily performance record by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"daily-performance",
+										":id"
+									],
+									"raw": "{{base_url}}/daily-performance/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
 						},
-						"description": "Get all daily performance records"
-					},
-					"response": []
+						{
+							"name": "Create Daily Performance",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new daily performance record",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"daily-performance"
+									],
+									"raw": "{{base_url}}/daily-performance"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Daily Performance",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update daily performance record",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"daily-performance",
+										":id"
+									],
+									"raw": "{{base_url}}/daily-performance/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Daily Performance",
+							"request": {
+								"description": "Delete daily performance record",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"daily-performance",
+										":id"
+									],
+									"raw": "{{base_url}}/daily-performance/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Daily Performance"
 				},
 				{
-					"name": "Get Daily Performance",
-					"request": {
-						"auth": {
-							"type": "noauth"
+					"description": "Task Completions management endpoints",
+					"item": [
+						{
+							"name": "List Task Completions",
+							"request": {
+								"description": "Get all task completion",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"task-completions"
+									],
+									"raw": "{{base_url}}/task-completions"
+								}
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/daily-performance/:id",
-							"host": ["{{base_url}}"],
-							"path": ["daily-performance", ":id"],
-							"variable": [
-								{ "key": "id", "value": "ID" }
-							]
+						{
+							"name": "Get Task Completions",
+							"request": {
+								"description": "Get task completion by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"task-completions",
+										":id"
+									],
+									"raw": "{{base_url}}/task-completions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
 						},
-						"description": "Get daily performance record by ID"
-					},
-					"response": []
+						{
+							"name": "Create Task Completions",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new task completion",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"task-completions"
+									],
+									"raw": "{{base_url}}/task-completions"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Task Completions",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update task completion",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"task-completions",
+										":id"
+									],
+									"raw": "{{base_url}}/task-completions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Task Completions",
+							"request": {
+								"description": "Delete task completion",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"task-completions",
+										":id"
+									],
+									"raw": "{{base_url}}/task-completions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Task Completions"
 				},
 				{
-					"name": "Task Completions",
-					"request": {
-						"auth": {
-							"type": "noauth"
+					"description": "Zone Completions management endpoints",
+					"item": [
+						{
+							"name": "List Zone Completions",
+							"request": {
+								"description": "Get all zone completion",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"zone-completions"
+									],
+									"raw": "{{base_url}}/zone-completions"
+								}
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/task-completions",
-							"host": ["{{base_url}}"],
-							"path": ["task-completions"],
-							"query": [
-								{ "key": "staff_id", "value": "", "disabled": true, "description": "Filter by staff ID" },
-								{ "key": "property_id", "value": "", "disabled": true, "description": "Filter by property ID" },
-								{ "key": "task_id", "value": "", "disabled": true, "description": "Filter by task ID" }
-							]
+						{
+							"name": "Get Zone Completions",
+							"request": {
+								"description": "Get zone completion by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"zone-completions",
+										":id"
+									],
+									"raw": "{{base_url}}/zone-completions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
 						},
-						"description": "Get all task completions"
-					},
-					"response": []
+						{
+							"name": "Create Zone Completions",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new zone completion",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"zone-completions"
+									],
+									"raw": "{{base_url}}/zone-completions"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Zone Completions",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update zone completion",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"zone-completions",
+										":id"
+									],
+									"raw": "{{base_url}}/zone-completions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Zone Completions",
+							"request": {
+								"description": "Delete zone completion",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"zone-completions",
+										":id"
+									],
+									"raw": "{{base_url}}/zone-completions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Zone Completions"
 				},
 				{
-					"name": "Get Task Completion",
-					"request": {
-						"auth": {
-							"type": "noauth"
+					"description": "Housekeeping Sessions management endpoints",
+					"item": [
+						{
+							"name": "List Housekeeping Sessions",
+							"request": {
+								"description": "Get all housekeeping session",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-sessions"
+									],
+									"raw": "{{base_url}}/housekeeping-sessions"
+								}
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/task-completions/:id",
-							"host": ["{{base_url}}"],
-							"path": ["task-completions", ":id"],
-							"variable": [
-								{ "key": "id", "value": "ID" }
-							]
+						{
+							"name": "Get Housekeeping Sessions",
+							"request": {
+								"description": "Get housekeeping session by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-sessions",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-sessions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
 						},
-						"description": "Get task completion by ID"
-					},
-					"response": []
+						{
+							"name": "Create Housekeeping Sessions",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new housekeeping session",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-sessions"
+									],
+									"raw": "{{base_url}}/housekeeping-sessions"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Housekeeping Sessions",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update housekeeping session",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-sessions",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-sessions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Housekeeping Sessions",
+							"request": {
+								"description": "Delete housekeeping session",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-sessions",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-sessions/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Housekeeping Sessions"
 				},
 				{
-					"name": "Zone Completions",
-					"request": {
-						"auth": {
-							"type": "noauth"
+					"description": "PMS Bookings management endpoints",
+					"item": [
+						{
+							"name": "List PMS Bookings",
+							"request": {
+								"description": "Get all PMS booking",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"pms-bookings"
+									],
+									"raw": "{{base_url}}/pms-bookings"
+								}
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/zone-completions",
-							"host": ["{{base_url}}"],
-							"path": ["zone-completions"],
-							"query": [
-								{ "key": "staff_id", "value": "", "disabled": true, "description": "Filter by staff ID" },
-								{ "key": "property_id", "value": "", "disabled": true, "description": "Filter by property ID" },
-								{ "key": "zone_id", "value": "", "disabled": true, "description": "Filter by zone ID" },
-								{ "key": "shift_date", "value": "", "disabled": true, "description": "Filter by shift date (YYYY-MM-DD)" }
-							]
+						{
+							"name": "Get PMS Bookings",
+							"request": {
+								"description": "Get PMS booking by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"pms-bookings",
+										":id"
+									],
+									"raw": "{{base_url}}/pms-bookings/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
 						},
-						"description": "Get all zone completions"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Zone Completion",
-					"request": {
-						"auth": {
-							"type": "noauth"
+						{
+							"name": "Create PMS Bookings",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new PMS booking",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"pms-bookings"
+									],
+									"raw": "{{base_url}}/pms-bookings"
+								}
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/zone-completions/:id",
-							"host": ["{{base_url}}"],
-							"path": ["zone-completions", ":id"],
-							"variable": [
-								{ "key": "id", "value": "ID" }
-							]
+						{
+							"name": "Update PMS Bookings",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update PMS booking",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"pms-bookings",
+										":id"
+									],
+									"raw": "{{base_url}}/pms-bookings/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
 						},
-						"description": "Get zone completion by ID"
-					},
-					"response": []
-				},
-				{
-					"name": "Housekeeping Sessions",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/housekeeping-sessions",
-							"host": ["{{base_url}}"],
-							"path": ["housekeeping-sessions"],
-							"query": [
-								{ "key": "staff_id", "value": "", "disabled": true, "description": "Filter by staff ID" },
-								{ "key": "state", "value": "", "disabled": true, "description": "Filter by state" }
-							]
-						},
-						"description": "Get all housekeeping sessions"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Housekeeping Session",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/housekeeping-sessions/:id",
-							"host": ["{{base_url}}"],
-							"path": ["housekeeping-sessions", ":id"],
-							"variable": [
-								{ "key": "id", "value": "ID" }
-							]
-						},
-						"description": "Get housekeeping session by ID"
-					},
-					"response": []
-				},
-				{
-					"name": "PMS API Responses",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/pms-api-responses",
-							"host": ["{{base_url}}"],
-							"path": ["pms-api-responses"],
-							"query": [
-								{ "key": "status", "value": "", "disabled": true, "description": "Filter by status" },
-								{ "key": "target_date", "value": "", "disabled": true, "description": "Filter by target date" }
-							]
-						},
-						"description": "Get all PMS API responses"
-					},
-					"response": []
-				},
-				{
-					"name": "Get PMS API Response",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/pms-api-responses/:id",
-							"host": ["{{base_url}}"],
-							"path": ["pms-api-responses", ":id"],
-							"variable": [
-								{ "key": "id", "value": "ID" }
-							]
-						},
-						"description": "Get PMS API response by ID"
-					},
-					"response": []
+						{
+							"name": "Delete PMS Bookings",
+							"request": {
+								"description": "Delete PMS booking",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"pms-bookings",
+										":id"
+									],
+									"raw": "{{base_url}}/pms-bookings/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "PMS Bookings"
 				}
 			],
-			"description": "Analytics endpoints (Read-only)"
+			"name": "Analytics"
 		},
 		{
-			"name": "Operations",
+			"description": "Operations endpoints (CRUD)",
 			"item": [
 				{
-					"name": "Staff",
+					"description": "Staff management endpoints",
 					"item": [
 						{
 							"name": "List Staff",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/staff",
-									"host": ["{{base_url}}"],
-									"path": ["staff"],
-									"query": [
-										{ "key": "property_id", "value": "", "description": "Filter by property ID" },
-										{ "key": "status", "value": "", "description": "Filter by status" }
-									]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "List all housekeeping staff"
+								"description": "List all housekeeping staff",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff"
+									],
+									"query": [
+										{
+											"description": "Filter by property ID",
+											"key": "property_id",
+											"value": ""
+										},
+										{
+											"description": "Filter by status",
+											"key": "status",
+											"value": ""
+										}
+									],
+									"raw": "{{base_url}}/staff"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Create Staff",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"staff_id\": \"S001\",\n  \"staff_name\": \"John Doe\",\n  \"shift_start\": \"09:00:00\",\n  \"shift_end\": \"17:00:00\",\n  \"property_id\": \"P001\",\n  \"phone_number\": \"+1234567890\"\n}"
 								},
+								"description": "Create a new staff member",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
 								"url": {
-									"raw": "{{base_url}}/staff",
-									"host": ["{{base_url}}"],
-									"path": ["staff"]
-								},
-								"description": "Create a new staff member"
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff"
+									],
+									"raw": "{{base_url}}/staff"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Get Staff",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/staff/:id",
-									"host": ["{{base_url}}"],
-									"path": ["staff", ":id"],
-									"variable": [{ "key": "id", "value": "S001" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Get staff member by ID"
+								"description": "Get staff member by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff",
+										":id"
+									],
+									"raw": "{{base_url}}/staff/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "S001"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Update Staff",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "PATCH",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"status\": \"inactive\"\n}"
 								},
+								"description": "Update staff member",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
 								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff",
+										":id"
+									],
 									"raw": "{{base_url}}/staff/:id",
-									"host": ["{{base_url}}"],
-									"path": ["staff", ":id"],
-									"variable": [{ "key": "id", "value": "S001" }]
-								},
-								"description": "Update staff member"
+									"variable": [
+										{
+											"key": "id",
+											"value": "S001"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Delete Staff",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/staff/:id",
-									"host": ["{{base_url}}"],
-									"path": ["staff", ":id"],
-									"variable": [{ "key": "id", "value": "S001" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Delete staff member"
+								"description": "Delete staff member",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff",
+										":id"
+									],
+									"raw": "{{base_url}}/staff/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "S001"
+										}
+									]
+								}
 							},
 							"response": []
 						}
 					],
-					"description": "Staff management endpoints"
+					"name": "Staff"
 				},
 				{
-					"name": "Properties",
+					"description": "Property management endpoints",
 					"item": [
 						{
 							"name": "List Properties",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/properties",
-									"host": ["{{base_url}}"],
-									"path": ["properties"],
-									"query": [
-										{ "key": "status", "value": "", "description": "Filter by status" }
-									]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "List all properties"
+								"description": "List all properties",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"properties"
+									],
+									"query": [
+										{
+											"description": "Filter by status",
+											"key": "status",
+											"value": ""
+										}
+									],
+									"raw": "{{base_url}}/properties"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Create Property",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"property_id\": \"P001\",\n  \"property_name\": \"Grand Hotel\",\n  \"property_address\": \"123 Main St\",\n  \"status\": \"active\"\n}"
 								},
+								"description": "Create a new property",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
 								"url": {
-									"raw": "{{base_url}}/properties",
-									"host": ["{{base_url}}"],
-									"path": ["properties"]
-								},
-								"description": "Create a new property"
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"properties"
+									],
+									"raw": "{{base_url}}/properties"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Get Property",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/properties/:id",
-									"host": ["{{base_url}}"],
-									"path": ["properties", ":id"],
-									"variable": [{ "key": "id", "value": "P001" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Get property by ID"
+								"description": "Get property by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"properties",
+										":id"
+									],
+									"raw": "{{base_url}}/properties/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "P001"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Update Property",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "PATCH",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"property_name\": \"Grand Hotel & Spa\"\n}"
+									"raw": "{\n  \"property_name\": \"Grand Hotel \u0026 Spa\"\n}"
 								},
+								"description": "Update property",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
 								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"properties",
+										":id"
+									],
 									"raw": "{{base_url}}/properties/:id",
-									"host": ["{{base_url}}"],
-									"path": ["properties", ":id"],
-									"variable": [{ "key": "id", "value": "P001" }]
-								},
-								"description": "Update property"
+									"variable": [
+										{
+											"key": "id",
+											"value": "P001"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Delete Property",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/properties/:id",
-									"host": ["{{base_url}}"],
-									"path": ["properties", ":id"],
-									"variable": [{ "key": "id", "value": "P001" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Delete property"
+								"description": "Delete property",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"properties",
+										":id"
+									],
+									"raw": "{{base_url}}/properties/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "P001"
+										}
+									]
+								}
 							},
 							"response": []
 						}
 					],
-					"description": "Property management endpoints"
+					"name": "Properties"
 				},
 				{
-					"name": "Schedules",
+					"description": "Schedule management endpoints",
 					"item": [
 						{
 							"name": "List Schedules",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/schedules",
-									"host": ["{{base_url}}"],
-									"path": ["schedules"],
-									"query": [
-										{ "key": "staff_id", "value": "", "description": "Filter by staff ID" },
-										{ "key": "property_id", "value": "", "description": "Filter by property ID" },
-										{ "key": "status", "value": "", "description": "Filter by status" },
-										{ "key": "scheduled_date", "value": "", "description": "Filter by date" }
-									]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "List all schedules"
+								"description": "List all schedules",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"schedules"
+									],
+									"query": [
+										{
+											"description": "Filter by staff ID",
+											"key": "staff_id",
+											"value": ""
+										},
+										{
+											"description": "Filter by property ID",
+											"key": "property_id",
+											"value": ""
+										},
+										{
+											"description": "Filter by status",
+											"key": "status",
+											"value": ""
+										},
+										{
+											"description": "Filter by date",
+											"key": "scheduled_date",
+											"value": ""
+										}
+									],
+									"raw": "{{base_url}}/schedules"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Create Schedule",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"zone_id\": \"Z001\",\n  \"scheduled_time\": \"10:00:00\",\n  \"property_id\": \"P001\",\n  \"status\": \"pending\"\n}"
 								},
+								"description": "Create a new schedule",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
 								"url": {
-									"raw": "{{base_url}}/schedules",
-									"host": ["{{base_url}}"],
-									"path": ["schedules"]
-								},
-								"description": "Create a new schedule"
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"schedules"
+									],
+									"raw": "{{base_url}}/schedules"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Get Schedule",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/schedules/:id",
-									"host": ["{{base_url}}"],
-									"path": ["schedules", ":id"],
-									"variable": [{ "key": "id", "value": "1" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Get schedule by ID"
+								"description": "Get schedule by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"schedules",
+										":id"
+									],
+									"raw": "{{base_url}}/schedules/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "1"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Update Schedule",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "PATCH",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"status\": \"completed\"\n}"
 								},
+								"description": "Update schedule",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
 								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"schedules",
+										":id"
+									],
 									"raw": "{{base_url}}/schedules/:id",
-									"host": ["{{base_url}}"],
-									"path": ["schedules", ":id"],
-									"variable": [{ "key": "id", "value": "1" }]
-								},
-								"description": "Update schedule"
+									"variable": [
+										{
+											"key": "id",
+											"value": "1"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Delete Schedule",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/schedules/:id",
-									"host": ["{{base_url}}"],
-									"path": ["schedules", ":id"],
-									"variable": [{ "key": "id", "value": "1" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Delete schedule"
+								"description": "Delete schedule",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"schedules",
+										":id"
+									],
+									"raw": "{{base_url}}/schedules/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "1"
+										}
+									]
+								}
 							},
 							"response": []
 						}
 					],
-					"description": "Schedule management endpoints"
+					"name": "Schedules"
 				},
 				{
-					"name": "Whatsapp Groups",
+					"description": "Whatsapp Group management endpoints",
 					"item": [
 						{
 							"name": "List Whatsapp Groups",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/whatsapp-groups",
-									"host": ["{{base_url}}"],
-									"path": ["whatsapp-groups"],
-									"query": [
-										{ "key": "property_id", "value": "", "description": "Filter by property ID" }
-									]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "List all whatsapp groups"
+								"description": "List all whatsapp groups",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"whatsapp-groups"
+									],
+									"query": [
+										{
+											"description": "Filter by property ID",
+											"key": "property_id",
+											"value": ""
+										}
+									],
+									"raw": "{{base_url}}/whatsapp-groups"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Create Whatsapp Group",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"property_id\": \"P001\",\n  \"whatsapp_group_id\": \"group-123\",\n  \"group_name\": \"Housekeeping Team\"\n}"
 								},
+								"description": "Create a new whatsapp group mapping",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
 								"url": {
-									"raw": "{{base_url}}/whatsapp-groups",
-									"host": ["{{base_url}}"],
-									"path": ["whatsapp-groups"]
-								},
-								"description": "Create a new whatsapp group mapping"
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"whatsapp-groups"
+									],
+									"raw": "{{base_url}}/whatsapp-groups"
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Get Whatsapp Group",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/whatsapp-groups/:id",
-									"host": ["{{base_url}}"],
-									"path": ["whatsapp-groups", ":id"],
-									"variable": [{ "key": "id", "value": "1" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Get whatsapp group by ID"
+								"description": "Get whatsapp group by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"whatsapp-groups",
+										":id"
+									],
+									"raw": "{{base_url}}/whatsapp-groups/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "1"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Update Whatsapp Group",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "PATCH",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"auth": {
+									"type": "noauth"
+								},
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"group_name\": \"New Team Name\"\n}"
 								},
+								"description": "Update whatsapp group",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
 								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"whatsapp-groups",
+										":id"
+									],
 									"raw": "{{base_url}}/whatsapp-groups/:id",
-									"host": ["{{base_url}}"],
-									"path": ["whatsapp-groups", ":id"],
-									"variable": [{ "key": "id", "value": "1" }]
-								},
-								"description": "Update whatsapp group"
+									"variable": [
+										{
+											"key": "id",
+											"value": "1"
+										}
+									]
+								}
 							},
 							"response": []
 						},
 						{
 							"name": "Delete Whatsapp Group",
 							"request": {
-								"auth": { "type": "noauth" },
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/whatsapp-groups/:id",
-									"host": ["{{base_url}}"],
-									"path": ["whatsapp-groups", ":id"],
-									"variable": [{ "key": "id", "value": "1" }]
+								"auth": {
+									"type": "noauth"
 								},
-								"description": "Delete whatsapp group"
+								"description": "Delete whatsapp group",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"whatsapp-groups",
+										":id"
+									],
+									"raw": "{{base_url}}/whatsapp-groups/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "1"
+										}
+									]
+								}
 							},
 							"response": []
 						}
 					],
-					"description": "Whatsapp Group management endpoints"
+					"name": "Whatsapp Groups"
+				},
+				{
+					"description": "Notified Bookings management endpoints",
+					"item": [
+						{
+							"name": "List Notified Bookings",
+							"request": {
+								"description": "Get all notified booking",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"notified-bookings"
+									],
+									"raw": "{{base_url}}/notified-bookings"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Notified Bookings",
+							"request": {
+								"description": "Get notified booking by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"notified-bookings",
+										":id"
+									],
+									"raw": "{{base_url}}/notified-bookings/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Notified Bookings",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new notified booking",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"notified-bookings"
+									],
+									"raw": "{{base_url}}/notified-bookings"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Notified Bookings",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update notified booking",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"notified-bookings",
+										":id"
+									],
+									"raw": "{{base_url}}/notified-bookings/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Notified Bookings",
+							"request": {
+								"description": "Delete notified booking",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"notified-bookings",
+										":id"
+									],
+									"raw": "{{base_url}}/notified-bookings/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Notified Bookings"
 				}
 			],
-			"description": "Operations endpoints (CRUD)"
+			"name": "Operations"
 		},
 		{
-			"name": "Health",
+			"description": "Health check endpoints",
 			"item": [
 				{
 					"name": "Health Check",
@@ -1521,14 +2498,18 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Check API health status",
 						"header": [],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/health",
-							"host": ["{{base_url}}"],
-							"path": ["health"]
-						},
-						"description": "Check API health status"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							],
+							"raw": "{{base_url}}/health"
+						}
 					},
 					"response": []
 				},
@@ -1538,14 +2519,18 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Check if API is ready",
 						"header": [],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/ready",
-							"host": ["{{base_url}}"],
-							"path": ["ready"]
-						},
-						"description": "Check if API is ready"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"ready"
+							],
+							"raw": "{{base_url}}/ready"
+						}
 					},
 					"response": []
 				},
@@ -1555,19 +2540,1036 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "GET",
+						"description": "Check if API is alive",
 						"header": [],
+						"method": "GET",
 						"url": {
-							"raw": "{{base_url}}/live",
-							"host": ["{{base_url}}"],
-							"path": ["live"]
-						},
-						"description": "Check if API is alive"
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"live"
+							],
+							"raw": "{{base_url}}/live"
+						}
 					},
 					"response": []
 				}
 			],
-			"description": "Health check endpoints"
+			"name": "Health"
+		},
+		{
+			"description": "Shift management endpoints",
+			"item": [
+				{
+					"description": "Staff Breaks management endpoints",
+					"item": [
+						{
+							"name": "List Staff Breaks",
+							"request": {
+								"description": "Get all staff break",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-breaks"
+									],
+									"raw": "{{base_url}}/staff-breaks"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Staff Breaks",
+							"request": {
+								"description": "Get staff break by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-breaks",
+										":id"
+									],
+									"raw": "{{base_url}}/staff-breaks/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Staff Breaks",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new staff break",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-breaks"
+									],
+									"raw": "{{base_url}}/staff-breaks"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Staff Breaks",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update staff break",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-breaks",
+										":id"
+									],
+									"raw": "{{base_url}}/staff-breaks/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Staff Breaks",
+							"request": {
+								"description": "Delete staff break",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-breaks",
+										":id"
+									],
+									"raw": "{{base_url}}/staff-breaks/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Staff Breaks"
+				},
+				{
+					"description": "Housekeeping Shifts management endpoints",
+					"item": [
+						{
+							"name": "List Housekeeping Shifts",
+							"request": {
+								"description": "Get all housekeeping shift",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-shifts"
+									],
+									"raw": "{{base_url}}/housekeeping-shifts"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Housekeeping Shifts",
+							"request": {
+								"description": "Get housekeeping shift by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-shifts",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-shifts/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Housekeeping Shifts",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new housekeeping shift",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-shifts"
+									],
+									"raw": "{{base_url}}/housekeeping-shifts"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Housekeeping Shifts",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update housekeeping shift",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-shifts",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-shifts/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Housekeeping Shifts",
+							"request": {
+								"description": "Delete housekeeping shift",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-shifts",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-shifts/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Housekeeping Shifts"
+				},
+				{
+					"description": "Staff Zone Assignments management endpoints",
+					"item": [
+						{
+							"name": "List Staff Zone Assignments",
+							"request": {
+								"description": "Get all staff zone assignment",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-zone-assignments"
+									],
+									"raw": "{{base_url}}/staff-zone-assignments"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Staff Zone Assignments",
+							"request": {
+								"description": "Get staff zone assignment by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-zone-assignments",
+										":id"
+									],
+									"raw": "{{base_url}}/staff-zone-assignments/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Staff Zone Assignments",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new staff zone assignment",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-zone-assignments"
+									],
+									"raw": "{{base_url}}/staff-zone-assignments"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Staff Zone Assignments",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update staff zone assignment",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-zone-assignments",
+										":id"
+									],
+									"raw": "{{base_url}}/staff-zone-assignments/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Staff Zone Assignments",
+							"request": {
+								"description": "Delete staff zone assignment",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"staff-zone-assignments",
+										":id"
+									],
+									"raw": "{{base_url}}/staff-zone-assignments/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Staff Zone Assignments"
+				},
+				{
+					"description": "Housekeeping Zones management endpoints",
+					"item": [
+						{
+							"name": "List Housekeeping Zones",
+							"request": {
+								"description": "Get all housekeeping zone",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-zones"
+									],
+									"raw": "{{base_url}}/housekeeping-zones"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Housekeeping Zones",
+							"request": {
+								"description": "Get housekeeping zone by ID",
+								"header": [],
+								"method": "GET",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-zones",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-zones/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Housekeeping Zones",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Create a new housekeeping zone",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "POST",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-zones"
+									],
+									"raw": "{{base_url}}/housekeeping-zones"
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Housekeeping Zones",
+							"request": {
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"description": "Update housekeeping zone",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"method": "PATCH",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-zones",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-zones/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Housekeeping Zones",
+							"request": {
+								"description": "Delete housekeeping zone",
+								"header": [],
+								"method": "DELETE",
+								"url": {
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"housekeeping-zones",
+										":id"
+									],
+									"raw": "{{base_url}}/housekeeping-zones/:id",
+									"variable": [
+										{
+											"key": "id",
+											"value": "ID"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"name": "Housekeeping Zones"
+				}
+			],
+			"name": "Shift Management"
+		},
+		{
+			"description": "Node management endpoints",
+			"item": [
+				{
+					"name": "List Nodes",
+					"request": {
+						"description": "Get all nodes",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							}
+						],
+						"method": "GET",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"nodes"
+							],
+							"raw": "{{base_url}}/nodes"
+						}
+					}
+				},
+				{
+					"name": "Create Node",
+					"request": {
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"NODE001\",\n  \"name\": \"Zo House BLR\",\n  \"description\": \"Main Hub\",\n  \"city\": \"Bangalore\",\n  \"country\": \"India\",\n  \"status\": \"active\",\n  \"type\": \"zo_house\"\n}"
+						},
+						"description": "Create a new node",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"nodes"
+							],
+							"raw": "{{base_url}}/nodes"
+						}
+					}
+				},
+				{
+					"name": "Get Node",
+					"request": {
+						"description": "Get node by ID",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							}
+						],
+						"method": "GET",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"nodes",
+								":id"
+							],
+							"raw": "{{base_url}}/nodes/:id",
+							"variable": [
+								{
+									"key": "id",
+									"value": "NODE001"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Node",
+					"request": {
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Node Name\"\n}"
+						},
+						"description": "Update node",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "PATCH",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"nodes",
+								":id"
+							],
+							"raw": "{{base_url}}/nodes/:id",
+							"variable": [
+								{
+									"key": "id",
+									"value": "NODE001"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Node",
+					"request": {
+						"description": "Delete node",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							}
+						],
+						"method": "DELETE",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"nodes",
+								":id"
+							],
+							"raw": "{{base_url}}/nodes/:id",
+							"variable": [
+								{
+									"key": "id",
+									"value": "NODE001"
+								}
+							]
+						}
+					}
+				}
+			],
+			"name": "Nodes"
+		},
+		{
+			"description": "Node Zone management endpoints",
+			"item": [
+				{
+					"name": "List Node Zones",
+					"request": {
+						"description": "Get all node zones (optional filter by node_id)",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							}
+						],
+						"method": "GET",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"node-zones"
+							],
+							"query": [
+								{
+									"description": "Filter by Node ID",
+									"key": "node_id",
+									"value": "NODE001"
+								}
+							],
+							"raw": "{{base_url}}/node-zones?node_id=NODE001"
+						}
+					}
+				},
+				{
+					"name": "Create Node Zone",
+					"request": {
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"node_id\": \"NODE001\",\n  \"zone_type\": \"zo_cafe\",\n  \"name\": \"Main Cafe\",\n  \"description\": \"Ground Floor Cafe\",\n  \"capacity\": 50,\n  \"floor\": \"0\",\n  \"is_available\": true\n}"
+						},
+						"description": "Create a new node zone",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "POST",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"node-zones"
+							],
+							"raw": "{{base_url}}/node-zones"
+						}
+					}
+				},
+				{
+					"name": "Get Node Zone",
+					"request": {
+						"description": "Get node zone by ID",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							}
+						],
+						"method": "GET",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"node-zones",
+								":id"
+							],
+							"raw": "{{base_url}}/node-zones/:id",
+							"variable": [
+								{
+									"key": "id",
+									"value": "uuid-here"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Node Zone",
+					"request": {
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Zone Name\",\n  \"is_available\": false\n}"
+						},
+						"description": "Update node zone",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"method": "PATCH",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"node-zones",
+								":id"
+							],
+							"raw": "{{base_url}}/node-zones/:id",
+							"variable": [
+								{
+									"key": "id",
+									"value": "uuid-here"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Node Zone",
+					"request": {
+						"description": "Delete node zone",
+						"header": [
+							{
+								"key": "client-key",
+								"type": "text",
+								"value": "{{client_key}}"
+							},
+							{
+								"key": "client-device-id",
+								"type": "text",
+								"value": "{{client_device_id}}"
+							},
+							{
+								"key": "client-device-secret",
+								"type": "text",
+								"value": "{{client_device_secret}}"
+							}
+						],
+						"method": "DELETE",
+						"url": {
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"node-zones",
+								":id"
+							],
+							"raw": "{{base_url}}/node-zones/:id",
+							"variable": [
+								{
+									"key": "id",
+									"value": "uuid-here"
+								}
+							]
+						}
+					}
+				}
+			],
+			"name": "Node Zones"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"type": "string",
+			"value": "http://localhost:8080/api/v1"
+		},
+		{
+			"key": "client_key",
+			"type": "string",
+			"value": "b3fdb161cba6f3ffe42c"
+		},
+		{
+			"key": "client_device_id",
+			"type": "string",
+			"value": "8c1af122-aaba-46ce-ac9e-f26401884867"
+		},
+		{
+			"key": "client_device_secret",
+			"type": "string",
+			"value": "f7a8e455-44ab-430a-8d90-bae43792fe58"
+		},
+		{
+			"key": "access_token",
+			"type": "string",
+			"value": ""
+		},
+		{
+			"key": "refresh_token",
+			"type": "string",
+			"value": ""
 		}
 	]
 }

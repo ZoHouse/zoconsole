@@ -203,6 +203,9 @@ export async function fetchTasks(propertyId?: string, zoneId?: string): Promise<
         if (json.success && Array.isArray(json.data)) {
             return json.data;
         }
+        if (Array.isArray(json)) {
+            return json;
+        }
         if (json.tasks && Array.isArray(json.tasks)) {
             return json.tasks;
         }

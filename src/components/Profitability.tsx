@@ -1,4 +1,7 @@
 import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { PMSDataModal } from './PMSDataModal';
+import { PMSStatsWidget } from './PMSStatsWidget';
 
 interface ProfitabilityProps {
   selectedProperty: string;
@@ -7,14 +10,22 @@ interface ProfitabilityProps {
 }
 
 export function Profitability({ selectedProperty, onPropertyChange, embedded = false }: ProfitabilityProps) {
+  const [isPMSModalOpen, setIsPMSModalOpen] = useState(false);
+
   return (
     <>
+      <PMSDataModal isOpen={isPMSModalOpen} onClose={() => setIsPMSModalOpen(false)} />
       {!embedded && <Header selectedProperty={selectedProperty} onPropertyChange={onPropertyChange} />}
       <main className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-[1400px]">
+          {embedded && (
+            <div className="flex justify-end mb-4">
+              {/* Removed PMS Data Button */}
+            </div>
+          )}
           <MetricsOverview />
           <div className="mt-6">
-            <RevenueBreakdown />
+            <RevenueBreakdown onOpenPMS={() => setIsPMSModalOpen(true)} />
           </div>
         </div>
       </main>
@@ -35,8 +46,9 @@ function Header({ selectedProperty, onPropertyChange }: HeaderProps) {
           <h1 className="text-xl sm:text-2xl">Profitability</h1>
           <p className="text-xs sm:text-sm text-[#9f9fa9] mt-1">Revenue and cost analysis</p>
         </div>
-        
+
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+
           <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#18181b] border border-[#27272a] rounded cursor-pointer hover:bg-[#27272a] whitespace-nowrap">
             <span className="text-xs sm:text-sm">Last 30 Days</span>
             <ChevronDown className="w-4 h-4" />
@@ -56,21 +68,21 @@ function MetricsOverview() {
         change="+12.5%"
         changeType="positive"
       />
-      
+
       <MetricCard
         title="Total Costs"
         value="₹28.8L"
         change="+8.2%"
         changeType="negative"
       />
-      
+
       <MetricCard
         title="Net Profit"
         value="₹16.4L"
         change="+18.9%"
         changeType="positive"
       />
-      
+
       <MetricCard
         title="Profit Margin"
         value="36.3%"
@@ -100,19 +112,23 @@ function MetricCard({ title, value, change, changeType }: MetricCardProps) {
   );
 }
 
-function RevenueBreakdown() {
+function RevenueBreakdown({ onOpenPMS }: { onOpenPMS?: () => void }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-6">
-        <h3 className="text-lg mb-4">Revenue by Category</h3>
-        <div className="space-y-4">
-          <RevenueItem label="Room Bookings" value="₹32.5L" percentage={72} />
-          <RevenueItem label="Cafe & F&B" value="₹8.2L" percentage={18} />
-          <RevenueItem label="Events" value="₹3.1L" percentage={7} />
-          <RevenueItem label="Other Services" value="₹1.4L" percentage={3} />
+      <div className="flex flex-col gap-6">
+        <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-6">
+          <h3 className="text-lg mb-4">Revenue by Category</h3>
+          <div className="space-y-4">
+            <RevenueItem label="Room Bookings" value="₹32.5L" percentage={72} />
+            <RevenueItem label="Cafe & F&B" value="₹8.2L" percentage={18} />
+            <RevenueItem label="Events" value="₹3.1L" percentage={7} />
+            <RevenueItem label="Other Services" value="₹1.4L" percentage={3} />
+          </div>
         </div>
+
+        {onOpenPMS && <PMSStatsWidget onOpenModal={onOpenPMS} />}
       </div>
-      
+
       <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-6">
         <h3 className="text-lg mb-4">Cost Breakdown</h3>
         <div className="space-y-4">
@@ -142,8 +158,8 @@ function RevenueItem({ label, value, percentage }: RevenueItemProps) {
         <span className="text-sm text-[#9ae600]">{value}</span>
       </div>
       <div className="w-full bg-[#27272a] rounded-full h-2">
-        <div 
-          className="bg-[#9ae600] h-2 rounded-full transition-all" 
+        <div
+          className="bg-[#9ae600] h-2 rounded-full transition-all"
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -165,8 +181,8 @@ function CostItem({ label, value, percentage }: CostItemProps) {
         <span className="text-sm text-[#fb2c36]">{value}</span>
       </div>
       <div className="w-full bg-[#27272a] rounded-full h-2">
-        <div 
-          className="bg-[#fb2c36] h-2 rounded-full transition-all" 
+        <div
+          className="bg-[#fb2c36] h-2 rounded-full transition-all"
           style={{ width: `${percentage}%` }}
         />
       </div>

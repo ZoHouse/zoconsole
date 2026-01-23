@@ -1,6 +1,7 @@
 import { Plus, Search, Edit, Trash2, Send, Clock, Camera, ChevronDown, CheckCircle, AlertCircle, Download } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { fetchTasks, type Task } from '../services/dashboard';
+import { fetchNodeData, getUniqueZonesFromTasks, type HousekeepingTask, type Zone } from '../services/nodes';
+
 
 interface TaskSchedulerProps {
   selectedProperty: string;
@@ -8,40 +9,39 @@ interface TaskSchedulerProps {
 }
 
 export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedulerProps) {
-  const [activeTab, setActiveTab] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  // const [activeTab, setActiveTab] = useState<'all' | 'high' | 'medium' | 'low'>('all'); // Removed tab state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedZone, setSelectedZone] = useState('all');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
+  const [zones, setZones] = useState<{ id: string; name: string; floor: string }[]>([]);
   const [activeTasksCount, setActiveTasksCount] = useState(0);
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [pendingTasksCount, setPendingTasksCount] = useState(0);
 
   useEffect(() => {
-    fetchTasks(selectedProperty)
-      .then(fetchedTasks => {
-        setTasks(fetchedTasks);
-        // Calculate basic stats from fetched tasks
-        setActiveTasksCount(fetchedTasks.filter(t => t.status === 'scheduled' || t.status === 'in_progress').length);
-        setCompletedTasksCount(fetchedTasks.filter(t => t.status === 'completed').length);
-        setPendingTasksCount(fetchedTasks.filter(t => t.status === 'pending' || t.status === 'scheduled').length);
+    if (!selectedProperty || selectedProperty === 'all') return;
+
+    fetchNodeData(selectedProperty)
+      .then(nodeData => {
+        setTasks(nodeData.housekeeping_tasks);
+        // Get unique zones from tasks for filtering
+        const uniqueZones = getUniqueZonesFromTasks(nodeData.housekeeping_tasks);
+        setZones(uniqueZones);
+        // Calculate stats from housekeeping tasks
+        const taskCount = nodeData.housekeeping_tasks?.length || 0;
+        setActiveTasksCount(taskCount);
+        setCompletedTasksCount(0); // No status in current API
+        setPendingTasksCount(taskCount);
       })
       .catch(console.error);
   }, [selectedProperty]);
 
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = (task.task_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.task_description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredTasks = (tasks || []).filter(task => {
+    const matchesSearch = (task.template_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.use_case || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.zone_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesZone = selectedZone === 'all' || task.zone_id === selectedZone;
-    // Priority logic might need adjustment if priority is not standard.
-    // Assuming priority is number if present, otherwise default to something or ignore.
-    const priority = task.priority || 999;
-
-    const matchesTab = activeTab === 'all' ||
-      (activeTab === 'high' && priority <= 2) ||
-      (activeTab === 'medium' && priority > 2 && priority <= 5) ||
-      (activeTab === 'low' && priority > 5);
-    return matchesSearch && matchesZone && matchesTab;
+    return matchesSearch && matchesZone;
   });
 
   return (
@@ -98,19 +98,9 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
         <div className="bg-[#1a1a1a] border border-[#27272a] rounded-lg overflow-hidden">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-[#27272a]">
             {/* Tabs */}
-            <div className="flex overflow-x-auto">
-              {['all', 'high', 'medium', 'low'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab as any)}
-                  className={`px-4 sm:px-6 py-3 sm:py-4 text-sm whitespace-nowrap transition-colors border-b-2 ${activeTab === tab
-                    ? 'border-[#9ae600] text-white'
-                    : 'border-transparent text-[#9f9fa9] hover:text-white'
-                    }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)} {tab !== 'all' ? 'Priority' : 'Tasks'}
-                </button>
-              ))}
+            {/* Tabs - Removed as per request */}
+            <div className="flex px-4 py-3 border-r border-[#27272a]">
+              <span className="text-sm font-medium text-white">All Tasks</span>
             </div>
 
             {/* Search and Filters */}
@@ -133,12 +123,11 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
                   className="appearance-none bg-[#09090b] border border-[#27272a] rounded pl-3 pr-10 py-2 text-sm text-white focus:outline-none focus:border-[#9ae600]"
                 >
                   <option value="all">All Zones</option>
-                  <option value="ZONE001">Degen Lounge</option>
-                  <option value="ZONE002">Dining Area</option>
-                  <option value="ZONE003">Warp Zone</option>
-                  <option value="ZONE004">Zo Studio</option>
-                  <option value="ZONE005">Bathrooms</option>
-                  <option value="ZONE006">Kitchen</option>
+                  {zones.map(zone => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name} ({zone.floor})
+                    </option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-white" />
               </div>
@@ -177,70 +166,32 @@ function StatCard({ icon, label, value, color }: StatCardProps) {
 }
 
 interface TasksTableProps {
-  tasks: Task[];
+  tasks: HousekeepingTask[];
 }
 
 function TasksTable({ tasks }: TasksTableProps) {
   return (
-    <table className="w-full min-w-[1200px]">
+    <table className="w-full min-w-[900px]">
       <thead className="bg-[#09090b] border-b border-[#27272a]">
         <tr>
           <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Zone ID</th>
           <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Zone Name</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Task ID</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Title</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Description</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Priority</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Est. Time</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Photo</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Assigned To</th>
-          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Status</th>
+          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Floor</th>
+          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Template ID</th>
+          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Template Name</th>
+          <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Use Case</th>
           <th className="text-left px-4 py-3 text-xs text-[#9f9fa9]">Actions</th>
         </tr>
       </thead>
       <tbody>
         {tasks.map((task, index) => (
-          <tr key={index} className="border-b border-[#27272a] hover:bg-[#27272a]/30 transition-colors">
-            <td className="px-4 py-3 text-sm">{task.zone_id || '-'}</td>
-            <td className="px-4 py-3 text-sm">{task.zone_name || '-'}</td>
-            <td className="px-4 py-3 text-sm text-[#9f9fa9]">{task.task_id}</td>
-            <td className="px-4 py-3 text-sm">{task.task_name}</td>
-            <td className="px-4 py-3 text-sm text-[#9f9fa9] max-w-xs truncate">{task.task_description}</td>
-            <td className="px-4 py-3">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${(task.priority || 999) <= 2
-                  ? 'bg-[#fb2c36]/10 text-[#fb2c36]'
-                  : (task.priority || 999) <= 5
-                    ? 'bg-[#f0b100]/10 text-[#f0b100]'
-                    : 'bg-[#9f9fa9]/10 text-[#9f9fa9]'
-                }`}>
-                {task.priority || '-'}
-              </span>
-            </td>
-            <td className="px-4 py-3 text-sm">
-              <div className="flex items-center gap-1 text-[#9f9fa9]">
-                <Clock className="w-3.5 h-3.5" />
-                {task.estimated_time || '-'}
-              </div>
-            </td>
-            <td className="px-4 py-3">
-              {task.photo_required === 'yes' ? (
-                <div className="flex items-center gap-1 text-[#9ae600]">
-                  <Camera className="w-4 h-4" />
-                  <span className="text-xs">Yes</span>
-                </div>
-              ) : (
-                <span className="text-xs text-[#71717b]">No</span>
-              )}
-            </td>
-            <td className="px-4 py-3 text-sm">{task.assigned_to || '-'}</td>
-            <td className="px-4 py-3">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${task.status === 'completed'
-                  ? 'bg-[#9ae600]/10 text-[#9ae600]'
-                  : 'bg-[#f0b100]/10 text-[#f0b100]'
-                }`}>
-                {task.status || 'Pending'}
-              </span>
-            </td>
+          <tr key={task.id || index} className="border-b border-[#27272a] hover:bg-[#27272a]/30 transition-colors">
+            <td className="px-4 py-3 text-sm text-[#9ae600]">{task.zone_id}</td>
+            <td className="px-4 py-3 text-sm">{task.zone_name}</td>
+            <td className="px-4 py-3 text-sm text-[#9f9fa9]">{task.floor}</td>
+            <td className="px-4 py-3 text-sm text-[#9f9fa9]">{task.template_id}</td>
+            <td className="px-4 py-3 text-sm font-medium">{task.template_name}</td>
+            <td className="px-4 py-3 text-sm text-[#9f9fa9] max-w-xs truncate">{task.use_case}</td>
             <td className="px-4 py-3">
               <div className="flex items-center gap-1">
                 <button className="p-1.5 hover:bg-[#3a3a3a] rounded transition-colors">
