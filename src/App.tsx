@@ -40,7 +40,7 @@ export default function App() {
     | "users"
   >("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState("blr-zo");
+  const [selectedProperty, setSelectedProperty] = useState("wtfxzo");
 
   // Show loading state
   if (isLoading) {

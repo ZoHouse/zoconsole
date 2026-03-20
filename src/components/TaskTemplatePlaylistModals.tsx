@@ -149,7 +149,7 @@ export function CreateTaskModal({ isOpen, onClose, onSave, templates = [] }: Cre
                 )}
               </button>
               {showTemplateDropdown && (
-                <div className="absolute left-0 right-0 top-full mt-2 bg-[#0d0d0d] border border-[#27272a] rounded-lg max-h-80 overflow-y-auto z-10 shadow-xl">
+                <div className="absolute left-0 right-0 top-full mt-2 bg-[#18181b] border border-[#3f3f46] rounded-xl max-h-[280px] overflow-y-auto z-[60] shadow-[0_20px_50px_rgba(0,0,0,0.5)] scrollbar-thin scrollbar-thumb-[#3f3f46] hover:scrollbar-thumb-[#52525b]">
                   {templates.map((template) => (
                     <button
                       key={template.id}
@@ -395,7 +395,7 @@ export function CreateTemplateModal({ isOpen, onClose, onSave, tasks, zones }: C
                 )}
               </button>
               {showZoneDropdown && (
-                <div className="absolute left-0 right-0 top-full mt-2 bg-[#0d0d0d] border border-[#27272a] rounded-lg max-h-80 overflow-y-auto z-10 shadow-xl">
+                <div className="absolute left-0 right-0 top-full mt-2 bg-[#18181b] border border-[#3f3f46] rounded-xl max-h-[280px] overflow-y-auto z-[60] shadow-[0_20px_50px_rgba(0,0,0,0.5)] scrollbar-thin scrollbar-thumb-[#3f3f46] hover:scrollbar-thumb-[#52525b]">
                   {zones.map((zone) => (
                     <button
                       key={zone.id}

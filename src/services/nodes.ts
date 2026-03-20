@@ -217,6 +217,22 @@ export interface CreatePlaylistPayload {
     trigger_when?: string;
 }
 
+export interface APIPlaylist {
+    id: string;
+    playlist_id: string;
+    playlist_type: string;
+    role?: string;
+    zone_names?: string;
+    zone_ids?: string;
+    template_names?: string;
+    template_ids?: string;
+    templates_included?: string; // Sometimes this is used
+    priority: 'high' | 'normal' | 'low';
+    est_time?: string;
+    trigger_when?: string;
+    node_id: string;
+}
+
 /**
  * Creates a new playlist
  */
@@ -228,5 +244,85 @@ export async function createPlaylist(payload: CreatePlaylistPayload): Promise<{ 
         return json.data;
     }
     throw new Error('Failed to create playlist');
+}
+
+/**
+ * Fetches all playlists for a specific node/property
+ */
+export async function fetchPlaylists(nodeId: string): Promise<APIPlaylist[]> {
+    try {
+        const normalizedNodeId = nodeId.toLowerCase();
+        // Assuming GET /playlists?node_id=... exists
+        const response = await zoServer.get(`/playlists`, {
+            params: { node_id: normalizedNodeId }
+        });
+        const json = response.data;
+
+        if (json.success && Array.isArray(json.data)) {
+            return json.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('Failed to fetch playlists:', error);
+        return [];
+    }
+}
+
+export interface APITask {
+    id: string;
+    task_id: string;
+    task_name: string;
+    task_description?: string;
+    photo_required?: 'yes' | 'no';
+    estimated_time?: string;
+    category?: string;
+    node_id: string;
+}
+
+export async function fetchTasks(nodeId: string): Promise<APITask[]> {
+    try {
+        const normalizedNodeId = nodeId.toLowerCase();
+        const response = await zoServer.get(`/tasks`, {
+            params: { node_id: normalizedNodeId }
+        });
+        const json = response.data;
+
+        if (json.success && Array.isArray(json.data)) {
+            return json.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('Failed to fetch tasks:', error);
+        return [];
+    }
+}
+
+export interface APITemplateItem {
+    id: string;
+    node_id: string;
+    template_id: string;
+    template_name: string;
+    item_order: string;
+    task_id: string;
+    task_name: string;
+    total_est_time?: string;
+}
+
+export async function fetchTemplates(nodeId: string): Promise<APITemplateItem[]> {
+    try {
+        const normalizedNodeId = nodeId.toLowerCase();
+        const response = await zoServer.get(`/templates`, {
+            params: { node_id: normalizedNodeId }
+        });
+        const json = response.data;
+
+        if (json.success && Array.isArray(json.data)) {
+            return json.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('Failed to fetch templates:', error);
+        return [];
+    }
 }
 

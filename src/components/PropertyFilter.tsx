@@ -8,11 +8,11 @@ interface PropertyFilterProps {
 
 export function PropertyFilter({ selectedProperty, onPropertyChange, showLabel = true }: PropertyFilterProps) {
   const properties = [
-    { id: 'blr-zo', name: 'BLRxZo' },
-    { id: 'wtf-zo', name: 'WTFxZo' },
-    { id: 'sfo-zo', name: 'SFOxZo' },
-    { id: 'dxb-zo', name: 'DXBxZo' },
-    { id: 'sgp-zo', name: 'SGPxZo' },
+    { id: 'blrxzo', name: 'BLRxZo' },
+    { id: 'wtfxzo', name: 'WTFxZo' },
+    { id: 'sfoxzo', name: 'SFOxZo' },
+    { id: 'dxbxzo', name: 'DXBxZo' },
+    { id: 'sgpxzo', name: 'SGPxZo' },
   ];
 
   const selectedPropertyName = properties.find(p => p.id === selectedProperty)?.name || 'BLRxZo';

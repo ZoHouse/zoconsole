@@ -27,12 +27,27 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
     fetchNodeData(selectedProperty)
       .then(nodeData => {
         setTasks(nodeData.housekeeping_tasks);
-        // Get unique zones from tasks for filtering
-        const uniqueZones = getUniqueZonesFromTasks(nodeData.housekeeping_tasks);
-        setZones(uniqueZones);
+
+        // Prefer direct zones array if available, otherwise derive from tasks
+        if (nodeData.zones && nodeData.zones.length > 0) {
+          setZones(nodeData.zones.map(z => ({
+            id: z.id,
+            name: z.name,
+            floor: z.floor
+          })));
+        } else {
+          setZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks));
+        }
 
         // Map housekeeping tasks to Template interface
         const uniqueTemplatesMap = new Map<string, Template>();
+
+        // Create a map for quick zone lookup to get correct type
+        const zoneMap = new Map<string, string>();
+        if (nodeData.zones) {
+          nodeData.zones.forEach(z => zoneMap.set(z.id, z.zone_type));
+        }
+
         if (nodeData.housekeeping_tasks) {
           nodeData.housekeeping_tasks.forEach(task => {
             if (task.template_id && !uniqueTemplatesMap.has(task.template_id)) {
@@ -43,7 +58,7 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
                 zone: {
                   id: task.zone_id,
                   name: task.zone_name,
-                  type: 'common', // Default as we might not have it in task view
+                  type: zoneMap.get(task.zone_id) || 'common',
                   floor: task.floor
                 },
                 tasks: [], // Placeholder
@@ -214,10 +229,26 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
               if (selectedProperty && selectedProperty !== 'all') {
                 const nodeData = await fetchNodeData(selectedProperty);
                 setTasks(nodeData.housekeeping_tasks);
-                setZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks));
+
+                if (nodeData.zones && nodeData.zones.length > 0) {
+                  setZones(nodeData.zones.map(z => ({
+                    id: z.id,
+                    name: z.name,
+                    floor: z.floor
+                  })));
+                } else {
+                  setZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks));
+                }
 
                 // Map housekeeping tasks to Template interface
                 const uniqueTemplatesMap = new Map<string, Template>();
+
+                // Create a map for quick zone lookup to get correct type
+                const zoneMap = new Map<string, string>();
+                if (nodeData.zones) {
+                  nodeData.zones.forEach(z => zoneMap.set(z.id, z.zone_type));
+                }
+
                 if (nodeData.housekeeping_tasks) {
                   nodeData.housekeeping_tasks.forEach(task => {
                     if (task.template_id && !uniqueTemplatesMap.has(task.template_id)) {
@@ -228,7 +259,7 @@ export function TaskScheduler({ selectedProperty, onPropertyChange }: TaskSchedu
                         zone: {
                           id: task.zone_id,
                           name: task.zone_name,
-                          type: 'common', // Default
+                          type: zoneMap.get(task.zone_id) || 'common',
                           floor: task.floor
                         },
                         tasks: [],

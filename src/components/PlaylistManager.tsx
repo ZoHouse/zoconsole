@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Play, MapPin, Clock, ChevronDown, X, GripVertical, CheckCircle2, Edit2, Send, User, Camera, Bot, ListChecks, FileText, Layers, Package, ChevronRight } from 'lucide-react';
 import { CreateTaskModal, CreateTemplateModal, CreatePlaylistModal } from './TaskTemplatePlaylistModals';
-import { fetchNodeData, getUniqueZonesFromTasks, getUniqueTemplatesFromTasks, createTask, createTemplate, createZoneTemplate, createPlaylist, type HousekeepingTask, type Zone, type NodeTemplate, type CreateTaskPayload, type CreateTemplatePayload, type CreateZoneTemplatePayload, type CreatePlaylistPayload } from '../services/nodes';
+import { fetchNodeData, fetchPlaylists, fetchTasks, fetchTemplates, getUniqueZonesFromTasks, getUniqueTemplatesFromTasks, createTask, createTemplate, createZoneTemplate, createPlaylist, type HousekeepingTask, type Zone, type NodeTemplate, type CreateTaskPayload, type CreateTemplatePayload, type CreateZoneTemplatePayload, type CreatePlaylistPayload, type APIPlaylist, type APITask, type APITemplateItem, type NodeData } from '../services/nodes';
 
 interface PlaylistManagerProps {
   selectedProperty: string;
@@ -81,111 +81,169 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
   // API Data State
   const [housekeepingTasks, setHousekeepingTasks] = useState<HousekeepingTask[]>([]);
   const [apiZones, setApiZones] = useState<{ id: string; name: string; floor: string; type: string }[]>([]);
-  const [apiTemplates, setApiTemplates] = useState<{ id: string; name: string; use_case: string }[]>([]);
+
+  const [apiPlaylists, setApiPlaylists] = useState<APIPlaylist[]>([]);
+  const [apiTasks, setApiTasks] = useState<APITask[]>([]);
+  const [apiTemplateItems, setApiTemplateItems] = useState<APITemplateItem[]>([]);
 
   // Fetch node data on property change
   useEffect(() => {
     if (!selectedProperty || selectedProperty === 'all') return;
 
     setIsLoading(true);
-    fetchNodeData(selectedProperty)
-      .then(nodeData => {
+
+    Promise.all([
+      fetchNodeData(selectedProperty),
+      fetchPlaylists(selectedProperty),
+      fetchTasks(selectedProperty),
+      fetchTemplates(selectedProperty)
+    ])
+      .then(([nodeData, playlists, tasks, templateItems]) => {
         setHousekeepingTasks(nodeData.housekeeping_tasks);
+        setApiPlaylists(playlists);
+        setApiTasks(tasks);
+        setApiTemplateItems(templateItems);
 
-        // Prefer direct zones array if available, otherwise derive from tasks
-        if (nodeData.zones && nodeData.zones.length > 0) {
-          setApiZones(nodeData.zones.map(z => ({
-            id: z.id,
-            name: z.name,
-            floor: z.floor,
-            type: z.zone_type || 'common' // Map zone_type to type
-          })));
-        } else {
-          // Fallback to deriving from tasks (might miss type info)
-          const uniqueZones = getUniqueZonesFromTasks(nodeData.housekeeping_tasks);
-          setApiZones(uniqueZones.map(z => ({
-            ...z,
-            type: 'common' // Default type if not available
-          })));
-        }
+        refreshZonesData(nodeData);
 
-        setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+
       })
-      .catch(console.error)
+      .catch((err) => { console.error('DEBUG: Fetch failed', err); })
       .finally(() => setIsLoading(false));
   }, [selectedProperty]);
 
+  // Helper to refresh zones by merging explicit list and task-derived data
+  const refreshZonesData = (nodeData: NodeData) => {
+    const zoneMap = new Map<string, { id: string; name: string; floor: string; type: string }>();
+
+    // 1. Add task-derived zones (baseline)
+    const uniqueFromTasks = getUniqueZonesFromTasks(nodeData.housekeeping_tasks);
+    uniqueFromTasks.forEach((z: { id: string; name: string; floor: string }) => {
+      zoneMap.set(z.id, {
+        id: z.id,
+        name: z.name,
+        floor: z.floor,
+        type: 'common'
+      });
+    });
+
+    // 2. Add/Override with explicit zones (better metadata)
+    if (nodeData.zones && nodeData.zones.length > 0) {
+      nodeData.zones.forEach((z: Zone) => {
+        zoneMap.set(z.id, {
+          id: z.id,
+          name: z.name,
+          floor: z.floor,
+          type: z.zone_type || 'common'
+        });
+      });
+    }
+
+    setApiZones(Array.from(zoneMap.values()));
+  };
+
   // Transform API data to component-compatible format
-  const tasks: Task[] = apiTemplates.map(template => ({
-    id: template.id,
-    name: template.name,
-    description: template.use_case,
-    requiresPhoto: true, // Default assumption
-    aiVerification: true, // Default assumption
-    estimatedMinutes: 5, // Default
-    templateId: template.id,
+  const tasks: Task[] = apiTasks.map(task => ({
+    id: task.task_id, // Use logical ID like CK-001
+    name: task.task_name,
+    description: task.task_description,
+    requiresPhoto: task.photo_required?.toLowerCase() === 'yes',
+    aiVerification: true, // Default
+    estimatedMinutes: parseInt(task.estimated_time || '5'),
+    templateId: '', // Tasks from the library are independent until assigned
     status: 'active' as const
   }));
 
-  // Build templates from zone-template groupings
-  const templates: Template[] = apiZones.map(zone => {
-    const zoneTasks = housekeepingTasks.filter(t => t.zone_id === zone.id);
-    const uniqueTemplatesInZone = [...new Set(zoneTasks.map(t => t.template_id))];
+  // Build templates from zone-template groupings (Zone Assignments)
+  // Transform apiTemplateItems into a Template Library (grouped by template_id)
+  const templates: Template[] = Object.values(apiTemplateItems.reduce((acc, item) => {
+    // Lookup full task details for each item to get photo requirements, etc.
+    const taskDetails = apiTasks.find(t => t.task_id === item.task_id);
+    const requiresPhoto = taskDetails?.photo_required?.toLowerCase() === 'yes';
 
-    return {
-      id: `${zone.id}-template`,
-      name: zone.name,
-      description: `Tasks for ${zone.name}`,
-      zone: {
-        id: zone.id,
-        name: zone.name,
-        type: zone.name.toLowerCase().includes('private') ? 'private_room' as const :
-          zone.name.toLowerCase().includes('studio') ? 'studio' as const :
-            zone.name.toLowerCase().includes('dorm') ? 'dorm' as const : 'common' as const,
-        floor: zone.floor
-      },
-      tasks: uniqueTemplatesInZone.map((templateId, idx) => ({
-        taskId: templateId,
-        order: idx + 1
-      })),
-      totalTasks: uniqueTemplatesInZone.length,
-      totalMinutes: uniqueTemplatesInZone.length * 5,
-      photosRequired: uniqueTemplatesInZone.length,
-      status: 'active' as const
-    };
-  });
+    if (!acc[item.template_id]) {
+      // Find a representative zone for this template from its assignments (housekeeping_tasks)
+      const assignment = housekeepingTasks.find(lt => lt.template_id === item.template_id);
+      const zoneDetails = assignment ? apiZones.find(z => z.id === assignment.zone_id) : null;
+
+      acc[item.template_id] = {
+        id: item.template_id,
+        name: item.template_name,
+        description: `Template: ${item.template_name}`,
+        zone: zoneDetails ? {
+          id: zoneDetails.id,
+          name: zoneDetails.name,
+          type: zoneDetails.type as any,
+          floor: zoneDetails.floor
+        } : {
+          id: 'library',
+          name: 'Library',
+          type: 'common' as const,
+          floor: '-'
+        },
+        tasks: [],
+        totalTasks: 0,
+        totalMinutes: 0,
+        photosRequired: 0,
+        status: 'active' as const
+      };
+    }
+
+    // Add task to this template
+    acc[item.template_id].tasks.push({
+      taskId: item.task_id,
+      name: item.task_name,
+      order: parseInt(item.item_order),
+      estimatedMinutes: parseInt(item.total_est_time || taskDetails?.estimated_time || '0'),
+      requiresPhoto: requiresPhoto,
+      aiVerification: true // Default for real tasks
+    });
+
+    // Update stats
+    acc[item.template_id].totalTasks++;
+    acc[item.template_id].totalMinutes += parseInt(item.total_est_time || taskDetails?.estimated_time || '0');
+    if (requiresPhoto) {
+      acc[item.template_id].photosRequired++;
+    }
+
+    return acc;
+  }, {} as Record<string, any>)) // using any for temp accumulator structure matching
+    .map(template => ({
+      ...template,
+      tasks: template.tasks.sort((a: any, b: any) => a.order - b.order)
+    }));
+
+
+
+
 
 
 
   // Build selectable templates for Dropdowns (using actual API templates)
-  const selectableTemplates: Template[] = apiTemplates.map(t => ({
-    id: t.id,
-    name: t.name,
-    description: t.use_case,
-    zone: { id: '', name: 'Unassigned', type: 'common', floor: '' }, // Placeholder
-    tasks: [],
-    totalTasks: 0,
-    totalMinutes: 0,
-    photosRequired: 0,
-    status: 'active' as const
-  }));
+  const selectableTemplates: Template[] = templates;
 
-  // Mock playlists (API doesn't provide playlists, so we generate sample ones)
-  const playlists: Playlist[] = templates.length > 0 ? [
-    {
-      id: 'pl1',
-      name: 'All Zones Cleaning',
-      description: 'Complete cleaning for all property zones',
-      type: 'deep_clean',
-      priority: 'normal',
-      templateIds: templates.slice(0, 3).map(t => t.id),
+  // Transform API playlists to component Playlists
+  const playlists: Playlist[] = apiPlaylists.map(pl => {
+    // Parse template IDs - try multiple fields as DB schema might vary or field usage might differ
+    const tIds = (pl.template_ids || pl.templates_included || '').split(',').filter(Boolean);
+
+    // Calculate tasks count by finding tasks that belong to these templates
+    const tasksInPlaylist = housekeepingTasks.filter(task => tIds.includes(task.template_id));
+
+    return {
+      id: pl.id,
+      name: pl.playlist_type === 'custom' ? (pl.id.slice(0, 8)) : pl.playlist_type, // Fallback name
+      description: pl.playlist_type,
+      type: (['room_turnover', 'deep_clean', 'event_setup', 'event_breakdown', 'emergency', 'custom'].includes(pl.playlist_type) ? pl.playlist_type : 'custom') as any,
+      priority: (['urgent', 'normal', 'low'].includes(pl.priority) ? pl.priority : 'normal') as any,
+      templateIds: tIds,
       usageCount: 0,
-      totalTasks: templates.slice(0, 3).reduce((sum, t) => sum + t.totalTasks, 0),
-      totalTimeMins: templates.slice(0, 3).reduce((sum, t) => sum + t.totalMinutes, 0),
-      photosRequired: templates.slice(0, 3).reduce((sum, t) => sum + t.photosRequired, 0),
+      totalTasks: tasksInPlaylist.length,
+      totalTimeMins: parseInt(pl.est_time || '0'),
+      photosRequired: 0, // Property not available in current API response
       status: 'active',
-    }
-  ] : [];
+    };
+  });
 
   const getPriorityConfig = (priority: 'urgent' | 'normal' | 'low') => {
     switch (priority) {
@@ -951,18 +1009,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
               const nodeData = await fetchNodeData(selectedProperty);
               setHousekeepingTasks(nodeData.housekeeping_tasks);
 
-              if (nodeData.zones && nodeData.zones.length > 0) {
-                setApiZones(nodeData.zones.map(z => ({
-                  id: z.id,
-                  name: z.name,
-                  floor: z.floor,
-                  type: z.zone_type || 'common'
-                })));
-              } else {
-                setApiZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks).map(z => ({ ...z, type: 'common' })));
-              }
+              refreshZonesData(nodeData);
 
-              setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+              const templateItems = await fetchTemplates(selectedProperty);
+              setApiTemplateItems(templateItems);
             }
             setShowCreateTaskModal(false);
           } catch (error) {
@@ -1010,18 +1060,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
               const nodeData = await fetchNodeData(selectedProperty);
               setHousekeepingTasks(nodeData.housekeeping_tasks);
 
-              if (nodeData.zones && nodeData.zones.length > 0) {
-                setApiZones(nodeData.zones.map(z => ({
-                  id: z.id,
-                  name: z.name,
-                  floor: z.floor,
-                  type: z.zone_type || 'common' // Map zone_type to type
-                })));
-              } else {
-                setApiZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks).map(z => ({ ...z, type: 'common' })));
-              }
+              refreshZonesData(nodeData);
 
-              setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+              const templateItems = await fetchTemplates(selectedProperty);
+              setApiTemplateItems(templateItems);
             }
             setShowCreateTemplateModal(false);
           } catch (error) {
@@ -1053,18 +1095,10 @@ export function PlaylistManager({ selectedProperty, onPropertyChange, embedded =
               const nodeData = await fetchNodeData(selectedProperty);
               setHousekeepingTasks(nodeData.housekeeping_tasks);
 
-              if (nodeData.zones && nodeData.zones.length > 0) {
-                setApiZones(nodeData.zones.map(z => ({
-                  id: z.id,
-                  name: z.name,
-                  floor: z.floor,
-                  type: z.zone_type || 'common'
-                })));
-              } else {
-                setApiZones(getUniqueZonesFromTasks(nodeData.housekeeping_tasks).map(z => ({ ...z, type: 'common' })));
-              }
+              refreshZonesData(nodeData);
 
-              setApiTemplates(getUniqueTemplatesFromTasks(nodeData.housekeeping_tasks));
+              const templateItems = await fetchTemplates(selectedProperty);
+              setApiTemplateItems(templateItems);
             }
             setShowCreatePlaylistModal(false);
           } catch (error) {
